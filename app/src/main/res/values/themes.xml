@@ -12,6 +12,7 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
+        <item name="bottomNavigationStyle">@style/Widget.App.BottomNavigationView</item>
     </style>
 
     <style name="CustomStatusBarTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
@@ -31,5 +32,14 @@
     <style name="HintText" parent="TextAppearance.MaterialComponents.Subtitle1">
         <item name="android:textColor">@color/primary</item>
         <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="Widget.App.BottomNavigationView" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.App.BottomNavigationView</item>
+    </style>
+
+    <style name="ThemeOverlay.App.BottomNavigationView" parent="">
+        <item name="colorPrimary">@color/orange</item>
+        <item name="colorOnSurface">@color/gray</item>
     </style>
 </resources>

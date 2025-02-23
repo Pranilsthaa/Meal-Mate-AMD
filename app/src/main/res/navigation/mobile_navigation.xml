@@ -8,18 +8,25 @@
     <fragment
         android:id="@+id/navigation_home"
         android:name="com.example.meal_app.ui.home.HomeFragment"
-        android:label="@string/title_home"
+        android:label="Home"
         tools:layout="@layout/fragment_home" />
 
     <fragment
-        android:id="@+id/navigation_dashboard"
-        android:name="com.example.meal_app.ui.dashboard.DashboardFragment"
-        android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_dashboard" />
+        android:id="@+id/navigation_meals"
+        android:name="com.example.meal_app.ui.meals.MealsFragment"
+        android:label="Meals"
+        tools:layout="@layout/fragment_meals" />
 
     <fragment
-        android:id="@+id/navigation_notifications"
-        android:name="com.example.meal_app.ui.notifications.NotificationsFragment"
-        android:label="@string/title_notifications"
-        tools:layout="@layout/fragment_notifications" />
+        android:id="@+id/navigation_grocery"
+        android:name="com.example.meal_app.ui.grocery.GroceryFragment"
+        android:label="Grocery List"
+        tools:layout="@layout/fragment_grocery" />
+
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.example.meal_app.ui.profile.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile" />
+
 </navigation>

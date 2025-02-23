@@ -18,4 +18,5 @@
     <color name="text_gray">#666666</color>
     <color name="gradient_start">#FF9F5A</color>
     <color name="gradient_end">#FF5A5A</color>
+    <color name="red">#FF4444</color>
 </resources>

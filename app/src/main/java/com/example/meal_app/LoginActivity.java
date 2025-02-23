@@ -10,8 +10,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.meal_app.databinding.ActivityLoginBinding;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-
 import com.example.meal_app.utils.SessionManager;
 
 public class LoginActivity extends AppCompatActivity {
@@ -20,6 +21,7 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseFirestore db;
     private SessionManager sessionManager;
     private static final String TAG = "LoginActivity";
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +31,7 @@ public class LoginActivity extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
         sessionManager = new SessionManager(this);
+        mAuth = FirebaseAuth.getInstance();
 
         // Check if user is already logged in
         if (sessionManager.isLoggedIn()) {
@@ -69,62 +72,84 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    private void resetLoginButton() {
+        binding.loginButton.setEnabled(true);
+        binding.loginButton.setText("Log In");
+    }
+
+    private void handleLogin(String email, String password) {
+        binding.loginButton.setEnabled(false);
+        binding.loginButton.setText("Logging in...");
+        binding.loginError.setVisibility(View.GONE);
+
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        if (user != null) {
+                            // Get user details from Firestore
+                            db.collection("users").document(user.getUid())
+                                    .get()
+                                    .addOnSuccessListener(documentSnapshot -> {
+                                        if (documentSnapshot.exists()) {
+                                            String name = documentSnapshot.getString("name");
+                                            String address = documentSnapshot.getString("address");
+                                            String phone = documentSnapshot.getString("phone");
+
+                                            sessionManager.createLoginSession(
+                                                    user.getUid(),
+                                                    email,
+                                                    name != null ? name : "User",
+                                                    address != null ? address : "Not set",
+                                                    phone != null ? phone : "Not set");
+
+                                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                            finish();
+                                        } else {
+                                            binding.loginError.setText("User data not found. Please sign up.");
+                                            binding.loginError.setVisibility(View.VISIBLE);
+                                            resetLoginButton();
+                                        }
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        binding.loginError.setText("Error: " + e.getMessage());
+                                        binding.loginError.setVisibility(View.VISIBLE);
+                                        resetLoginButton();
+                                    });
+                        }
+                    } else {
+                        String errorMessage = task.getException() != null ? task.getException().getMessage()
+                                : "Authentication failed";
+                        binding.loginError.setText(errorMessage);
+                        binding.loginError.setVisibility(View.VISIBLE);
+                        resetLoginButton();
+                    }
+                });
+    }
+
     private void handleLogin() {
         String email = binding.usernameInput.getText().toString().trim();
         String password = binding.passwordInput.getText().toString().trim();
 
-        if (email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+        if (email.isEmpty()) {
+            binding.loginError.setText("Please enter your email");
+            binding.loginError.setVisibility(View.VISIBLE);
             return;
         }
 
-        binding.loginButton.setEnabled(false);
-        binding.loginButton.setText("Logging in...");
+        if (password.isEmpty()) {
+            binding.loginError.setText("Please enter your password");
+            binding.loginError.setVisibility(View.VISIBLE);
+            return;
+        }
 
-        String userId = email.replace("@", "_").replace(".", "_");
+        // Basic email format validation
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            binding.loginError.setText("Please enter a valid email address");
+            binding.loginError.setVisibility(View.VISIBLE);
+            return;
+        }
 
-        db.collection("user_detail")
-                .document(userId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        String storedPassword = documentSnapshot.getString("password");
-                        if (password.equals(storedPassword)) {
-                            // Create login session
-                            sessionManager.createLoginSession(userId, email);
-
-                            Toast.makeText(LoginActivity.this,
-                                    "Login successful!",
-                                    Toast.LENGTH_SHORT).show();
-                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                            finish();
-                        } else {
-                            Toast.makeText(LoginActivity.this,
-                                    "Invalid password",
-                                    Toast.LENGTH_SHORT).show();
-                            binding.loginButton.setEnabled(true);
-                            binding.loginButton.setText("Log In");
-                        }
-                    } else {
-                        Toast.makeText(LoginActivity.this,
-                                "User not found",
-                                Toast.LENGTH_SHORT).show();
-                        binding.loginButton.setEnabled(true);
-                        binding.loginButton.setText("Log In");
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error checking user credentials", e);
-                    Toast.makeText(LoginActivity.this,
-                            "Error: " + e.getMessage(),
-                            Toast.LENGTH_SHORT).show();
-                    binding.loginButton.setEnabled(true);
-                    binding.loginButton.setText("Log In");
-                });
-    }
-
-    private void handleSignup() {
-        // TODO: Implement signup logic or navigation
-        Toast.makeText(this, "Sign up clicked", Toast.LENGTH_SHORT).show();
+        handleLogin(email, password);
     }
 }

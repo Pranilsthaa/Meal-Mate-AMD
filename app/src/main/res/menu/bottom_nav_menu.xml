@@ -16,9 +16,4 @@
         android:icon="@drawable/ic_grocery"
         android:title="Grocery List" />
 
-    <item
-        android:id="@+id/navigation_profile"
-        android:icon="@drawable/ic_profile"
-        android:title="Profile" />
-
 </menu>

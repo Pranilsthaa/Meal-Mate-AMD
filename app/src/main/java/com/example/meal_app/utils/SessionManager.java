@@ -7,6 +7,9 @@ public class SessionManager {
     private static final String PREF_NAME = "MealAppSession";
     private static final String KEY_USER_ID = "userId";
     private static final String KEY_USER_EMAIL = "userEmail";
+    private static final String KEY_USER_NAME = "userName";
+    private static final String KEY_USER_ADDRESS = "userAddress";
+    private static final String KEY_USER_PHONE = "userPhone";
     private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
 
     private SharedPreferences pref;
@@ -19,9 +22,12 @@ public class SessionManager {
         editor = pref.edit();
     }
 
-    public void createLoginSession(String userId, String email) {
+    public void createLoginSession(String userId, String email, String name, String address, String phone) {
         editor.putString(KEY_USER_ID, userId);
         editor.putString(KEY_USER_EMAIL, email);
+        editor.putString(KEY_USER_NAME, name);
+        editor.putString(KEY_USER_ADDRESS, address);
+        editor.putString(KEY_USER_PHONE, phone);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.commit();
     }
@@ -36,6 +42,18 @@ public class SessionManager {
 
     public String getUserEmail() {
         return pref.getString(KEY_USER_EMAIL, null);
+    }
+
+    public String getUserName() {
+        return pref.getString(KEY_USER_NAME, null);
+    }
+
+    public String getUserAddress() {
+        return pref.getString(KEY_USER_ADDRESS, null);
+    }
+
+    public String getUserPhone() {
+        return pref.getString(KEY_USER_PHONE, null);
     }
 
     public void logout() {

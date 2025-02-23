@@ -43,10 +43,10 @@ public class MainActivity extends AppCompatActivity {
         // Setup bottom navigation
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
 
-        // Setup AppBarConfiguration
+        // Setup AppBarConfiguration - removed profile from top level destinations
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_meals,
-                R.id.navigation_grocery, R.id.navigation_profile)
+                R.id.navigation_grocery) // Removed R.id.navigation_profile
                 .build();
 
         NavigationUI.setupWithNavController(binding.navView, navController);

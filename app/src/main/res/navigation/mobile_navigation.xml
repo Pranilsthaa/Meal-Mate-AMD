@@ -28,4 +28,10 @@
         android:name="com.example.meal_app.ui.profile.ProfileFragment"
         android:label="Profile" />
 
+    <fragment
+        android:id="@+id/navigation_add_recipe"
+        android:name="com.example.meal_app.ui.recipe.AddRecipeFragment"
+        android:label="Add Recipe"
+        tools:layout="@layout/fragment_add_recipe" />
+
 </navigation>

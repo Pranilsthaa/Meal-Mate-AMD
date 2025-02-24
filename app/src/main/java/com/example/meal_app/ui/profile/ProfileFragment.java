@@ -9,7 +9,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.ImageButton;
-import android.widget.Button;
+import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.core.content.ContextCompat;
@@ -43,7 +43,7 @@ public class ProfileFragment extends Fragment {
         TextView userEmailDisplay = root.findViewById(R.id.userEmailDisplay);
         TextView userPhone = root.findViewById(R.id.userPhone);
         TextView userAddress = root.findViewById(R.id.userAddress);
-        Button logoutButton = root.findViewById(R.id.logoutButton);
+        LinearLayout logoutButton = root.findViewById(R.id.logoutButton);
         ImageButton backButton = root.findViewById(R.id.backButton);
 
         // Set user details

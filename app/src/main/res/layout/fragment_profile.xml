@@ -63,18 +63,46 @@
                 app:contentPadding="15dp"
                 app:tint="@color/orange" />
 
-            <Button
+<!--            <Button-->
+<!--                android:id="@+id/logoutButton"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginTop="24dp"-->
+<!--                android:background="@drawable/logout_button_background"-->
+<!--                android:drawableStart="@drawable/ic_logout"-->
+<!--                android:drawablePadding="8dp"-->
+<!--                android:padding="12dp"-->
+<!--                android:text="Logout"-->
+<!--                android:textColor="@color/red"-->
+<!--                android:textSize="16sp" />-->
+            <LinearLayout
                 android:id="@+id/logoutButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:background="@drawable/logout_button_background"
-                android:drawableStart="@drawable/ic_logout"
-                android:drawablePadding="8dp"
                 android:padding="12dp"
-                android:text="Logout"
-                android:textColor="@color/red"
-                android:textSize="16sp" />
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:background="@drawable/logout_button_background"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_logout"
+                    app:tint="@color/orange" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Logout"
+                    android:textColor="@color/orange"
+                    android:textSize="16sp" />
+            </LinearLayout>
+
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

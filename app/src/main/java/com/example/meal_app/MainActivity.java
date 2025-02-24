@@ -2,6 +2,11 @@ package com.example.meal_app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
+import android.widget.EditText;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -20,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
     private SessionManager sessionManager;
+    private NavController navController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,12 +47,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Setup bottom navigation
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+        navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
 
-        // Setup AppBarConfiguration - removed profile from top level destinations
+        // Setup AppBarConfiguration
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_meals,
-                R.id.navigation_grocery) // Removed R.id.navigation_profile
+                R.id.navigation_grocery)
                 .build();
 
         NavigationUI.setupWithNavController(binding.navView, navController);
@@ -56,6 +62,53 @@ public class MainActivity extends AppCompatActivity {
                 ContextCompat.getColorStateList(this, R.color.bottom_nav_color));
         binding.navView.setItemTextColor(
                 ContextCompat.getColorStateList(this, R.color.bottom_nav_color));
+
+        // Handle navigation changes
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            // Keep Home tab selected when on Profile screen
+            if (destination.getId() == R.id.navigation_profile) {
+                binding.navView.getMenu().findItem(R.id.navigation_home).setChecked(true);
+            }
+        });
+
+        // Handle back navigation
+        binding.navView.setOnItemSelectedListener(item -> {
+            navController.navigate(item.getItemId());
+            return true;
+        });
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        View view = getCurrentFocus();
+        if (view != null && (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_MOVE) &&
+                view instanceof EditText && !view.getClass().getName().startsWith("android.webkit.")) {
+            int[] scrcoords = new int[2];
+            view.getLocationOnScreen(scrcoords);
+            float x = ev.getRawX() + view.getLeft() - scrcoords[0];
+            float y = ev.getRawY() + view.getTop() - scrcoords[1];
+            if (x < view.getLeft() || x > view.getRight() || y < view.getTop() || y > view.getBottom()) {
+                hideKeyboard(view);
+            }
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private void hideKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            view.clearFocus();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (navController.getCurrentDestination().getId() == R.id.navigation_profile) {
+            navController.navigate(R.id.navigation_home);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     // Add this method to handle logout

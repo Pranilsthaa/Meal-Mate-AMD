@@ -15,7 +15,11 @@
         android:id="@+id/navigation_meals"
         android:name="com.example.meal_app.ui.meals.MealsFragment"
         android:label="Meals"
-        tools:layout="@layout/fragment_meals" />
+        tools:layout="@layout/fragment_meals">
+        <action
+            android:id="@+id/action_navigation_meals_to_recipeDetailsFragment"
+            app:destination="@id/navigation_recipe_details" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_grocery"
@@ -33,5 +37,15 @@
         android:name="com.example.meal_app.ui.recipe.AddRecipeFragment"
         android:label="Add Recipe"
         tools:layout="@layout/fragment_add_recipe" />
+
+    <fragment
+        android:id="@+id/navigation_recipe_details"
+        android:name="com.example.meal_app.ui.recipe.RecipeDetailsFragment"
+        android:label="Recipe Details"
+        tools:layout="@layout/fragment_recipe_details">
+        <argument
+            android:name="recipeId"
+            app:argType="string" />
+    </fragment>
 
 </navigation>

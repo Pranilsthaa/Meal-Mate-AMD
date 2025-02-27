@@ -16,10 +16,11 @@
         android:layout_marginBottom="16dp">
 
         <TextView
+            android:id="@+id/title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Assign Meals to Days"
+            android:text="Select Day"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold"/>
@@ -33,11 +34,20 @@
             android:tint="@color/white"/>
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recipesRecyclerView"
+    <Spinner
+        android:id="@+id/daySpinner"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@drawable/input_background"
+        android:layout_marginBottom="16dp"
+        android:paddingHorizontal="12dp"/>
+
+    <Button
+        android:id="@+id/selectDayButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="10dp"
-        android:clipToPadding="false"/>
+        android:text="Continue"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/orange"/>
 
 </LinearLayout> 

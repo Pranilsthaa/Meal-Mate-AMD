@@ -1,27 +1,29 @@
 package com.example.meal_app.ui.meals;
 
 import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.ImageButton;
+import android.widget.Button;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.meal_app.R;
 import com.example.meal_app.adapter.MealDayAdapter;
+import com.example.meal_app.adapter.AssignedMealsAdapter;
 import com.example.meal_app.databinding.FragmentMealsBinding;
 import com.example.meal_app.model.MealDay;
 import com.example.meal_app.model.Recipe;
@@ -31,12 +33,10 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.DocumentSnapshot;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class MealsFragment extends Fragment {
@@ -48,18 +48,12 @@ public class MealsFragment extends Fragment {
     private MealDayAdapter adapter;
     private List<MealDay> mealDays;
     private List<Recipe> allRecipes;
-    private Calendar currentWeek;
-    private Map<String, List<Map<String, Object>>> weeklyMeals;
-    private SimpleDateFormat weekFormat;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
-        currentWeek = Calendar.getInstance();
-        weeklyMeals = new HashMap<>();
-        weekFormat = new SimpleDateFormat("MM/dd/yyyy", Locale.getDefault());
     }
 
     @Override
@@ -67,130 +61,140 @@ public class MealsFragment extends Fragment {
         binding = FragmentMealsBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        setupWeekNavigation();
-        setupAssignMealsButton();
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
+
+        // Set username in title
+        TextView titleText = root.findViewById(R.id.titleText);
+        String userEmail = auth.getCurrentUser().getEmail();
+        String username = userEmail != null ? userEmail.split("@")[0] : "User";
+        titleText.setText(username + "'s Meal Plan");
+
         setupRecyclerView();
-        loadRecipes();
-        loadMealPlan();
+        setupAssignMealsButton();
+
+        // Load data
+        loadRecipes(recipes -> {
+            allRecipes = recipes;
+            loadMealPlan();
+        });
 
         return root;
     }
 
-    private void setupWeekNavigation() {
-        updateWeekText();
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Show loading state
+        binding.progressBar.setVisibility(View.VISIBLE);
+        binding.mealsRecyclerView.setVisibility(View.GONE);
+        binding.noMealsText.setVisibility(View.GONE);
 
-        binding.previousWeekButton.setOnClickListener(v -> {
-            currentWeek.add(Calendar.WEEK_OF_YEAR, -1);
-            updateWeekText();
-            loadWeeklyMeals();
+        // Load latest data
+        loadRecipes(recipes -> {
+            allRecipes = recipes;
+            loadMealPlan();
         });
-
-        binding.nextWeekButton.setOnClickListener(v -> {
-            currentWeek.add(Calendar.WEEK_OF_YEAR, 1);
-            updateWeekText();
-            loadWeeklyMeals();
-        });
-    }
-
-    private void updateWeekText() {
-        String weekText = "Week of " + weekFormat.format(currentWeek.getTime());
-        binding.weekText.setText(weekText);
     }
 
     private void setupAssignMealsButton() {
-        binding.assignMealsButton.setOnClickListener(v -> showAssignMealsDialog());
+        binding.assignMealsButton.setOnClickListener(v -> showAssignMealsDialog(null));
     }
 
     private void setupRecyclerView() {
         mealsRecyclerView = binding.mealsRecyclerView;
+        mealsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         mealDays = new ArrayList<>();
 
-        // Initialize meal days
+        // Initialize days of the week
         String[] days = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
         for (String day : days) {
-            mealDays.add(new MealDay(day, new ArrayList<>()));
+            mealDays.add(new MealDay(day));
         }
 
         adapter = new MealDayAdapter(mealDays, new MealDayAdapter.OnMealDayListener() {
             @Override
             public void onMealDayClick(String day) {
-                // Show assign meal dialog for the selected day
-                for (MealDay mealDay : mealDays) {
-                    if (mealDay.getDay().equals(day)) {
-                        showAssignMealDialog(mealDay);
-                        break;
-                    }
-                }
+                showAssignMealsDialog(day);
             }
 
             @Override
             public void onRemoveMealClick(String day, Recipe recipe) {
-                // Remove meal from the selected day
-                for (MealDay mealDay : mealDays) {
-                    if (mealDay.getDay().equals(day)) {
-                        removeMealFromDay(mealDay, recipe);
-                        break;
-                    }
-                }
+                removeMealFromDay(findMealDayByName(day), recipe);
             }
         });
         mealsRecyclerView.setAdapter(adapter);
-        mealsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
     }
 
-    private void loadRecipes() {
-        allRecipes = new ArrayList<>();
+    private void loadRecipes(OnRecipesLoadedListener listener) {
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         db.collection("recipes")
-                .whereEqualTo("userId", auth.getCurrentUser().getUid())
+                .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Recipe> recipes = new ArrayList<>();
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                        Recipe recipe = document.toObject(Recipe.class);
-                        if (recipe != null) {
-                            recipe.setId(document.getId());
-                            allRecipes.add(recipe);
-                        }
+                        Recipe recipe = new Recipe();
+                        recipe.setId(document.getId());
+                        recipe.setName(document.getString("name"));
+                        recipe.setDescription(document.getString("description"));
+                        recipe.setImageUrl(document.getString("imageUrl"));
+                        recipe.setCategory(document.getString("category"));
+                        recipe.setCookingTime(document.getLong("cookingTime").intValue());
+                        recipe.setServings(document.getLong("servings").intValue());
+                        recipe.setTotalPrice(document.getDouble("totalPrice"));
+                        recipe.setUserId(document.getString("userId"));
+                        recipes.add(recipe);
                     }
+                    listener.onRecipesLoaded(recipes);
                 })
-                .addOnFailureListener(e -> Snackbar
-                        .make(requireView(), "Failed to load recipes: " + e.getMessage(), Snackbar.LENGTH_LONG).show());
+                .addOnFailureListener(e -> handleError("Error loading recipes: " + e.getMessage()));
     }
 
     private void loadMealPlan() {
-        db.collection("mealPlans")
-                .document(auth.getCurrentUser().getUid())
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        Map<String, Object> data = documentSnapshot.getData();
-                        if (data != null) {
-                            for (MealDay mealDay : mealDays) {
-                                Object dayData = data.get(mealDay.getDay());
-                                if (dayData instanceof List<?>) {
-                                    List<?> dayMeals = (List<?>) dayData;
-                                    List<Recipe> recipes = new ArrayList<>();
+        if (auth.getCurrentUser() == null)
+            return;
 
-                                    for (Object mealObj : dayMeals) {
-                                        if (mealObj instanceof Map) {
-                                            @SuppressWarnings("unchecked")
-                                            Map<String, Object> meal = (Map<String, Object>) mealObj;
-                                            String recipeId = (String) meal.get("recipeId");
-                                            Recipe recipe = findRecipeById(recipeId);
-                                            if (recipe != null) {
-                                                recipes.add(recipe);
-                                            }
-                                        }
+        String userId = auth.getCurrentUser().getUid();
+        binding.progressBar.setVisibility(View.VISIBLE);
+        mealsRecyclerView.setVisibility(View.GONE);
+
+        db.collection("meal_plans")
+                .whereEqualTo("userId", userId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    // Reset all days
+                    for (MealDay mealDay : mealDays) {
+                        mealDay.setRecipes(new ArrayList<>());
+                    }
+
+                    // Populate meals for each day
+                    for (DocumentSnapshot document : queryDocumentSnapshots) {
+                        String day = document.getString("day");
+                        List<String> recipeIds = (List<String>) document.get("recipeIds");
+
+                        if (day != null && recipeIds != null) {
+                            MealDay mealDay = findMealDayByName(day);
+                            if (mealDay != null) {
+                                for (String recipeId : recipeIds) {
+                                    Recipe recipe = findRecipeById(recipeId);
+                                    if (recipe != null) {
+                                        mealDay.addRecipe(recipe);
                                     }
-                                    mealDay.setRecipes(recipes);
                                 }
                             }
-                            adapter.notifyDataSetChanged();
                         }
                     }
+
+                    binding.progressBar.setVisibility(View.GONE);
+                    mealsRecyclerView.setVisibility(View.VISIBLE);
+                    adapter.notifyDataSetChanged();
                 })
-                .addOnFailureListener(e -> Snackbar
-                        .make(requireView(), "Failed to load meal plan: " + e.getMessage(), Snackbar.LENGTH_LONG)
-                        .show());
+                .addOnFailureListener(e -> {
+                    binding.progressBar.setVisibility(View.GONE);
+                    mealsRecyclerView.setVisibility(View.VISIBLE);
+                    handleError("Error loading meal plan: " + e.getMessage());
+                });
     }
 
     private Recipe findRecipeById(String recipeId) {
@@ -202,196 +206,128 @@ public class MealsFragment extends Fragment {
         return null;
     }
 
-    private void showAssignMealsDialog() {
+    private void showAssignMealsDialog(String selectedDay) {
+        if (selectedDay == null) {
+            // Show day selection dialog (for Assign Meals button)
+            Dialog dialog = new Dialog(requireContext());
+            dialog.setContentView(R.layout.dialog_assign_meals);
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+            TextView titleText = dialog.findViewById(R.id.title);
+            titleText.setText("Select Day");
+
+            // Setup spinner for day selection
+            Spinner daySpinner = dialog.findViewById(R.id.daySpinner);
+            String[] days = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+            ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
+                    requireContext(),
+                    android.R.layout.simple_spinner_item,
+                    days);
+            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            daySpinner.setAdapter(spinnerAdapter);
+
+            // Get current day
+            int currentDayIndex = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK) - 1;
+            daySpinner.setSelection(currentDayIndex);
+
+            ImageButton closeButton = dialog.findViewById(R.id.closeButton);
+            closeButton.setOnClickListener(v -> dialog.dismiss());
+
+            Button selectDayButton = dialog.findViewById(R.id.selectDayButton);
+            selectDayButton.setOnClickListener(v -> {
+                String selectedDayFromSpinner = daySpinner.getSelectedItem().toString();
+                dialog.dismiss();
+                showRecipeSelectionDialog(selectedDayFromSpinner);
+            });
+
+            dialog.show();
+        } else {
+            // Direct recipe selection (for meal day clicks)
+            showRecipeSelectionDialog(selectedDay);
+        }
+    }
+
+    private void showRecipeSelectionDialog(String selectedDay) {
         Dialog dialog = new Dialog(requireContext());
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_assign_meals);
+        dialog.setContentView(R.layout.dialog_recipe_selection);
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        TextView titleText = dialog.findViewById(R.id.title);
+        titleText.setText("Select Recipe for " + selectedDay);
+
+        ImageButton closeButton = dialog.findViewById(R.id.closeButton);
+        closeButton.setOnClickListener(v -> dialog.dismiss());
 
         RecyclerView recipesRecyclerView = dialog.findViewById(R.id.recipesRecyclerView);
         recipesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
-        dialog.findViewById(R.id.closeButton).setOnClickListener(v -> dialog.dismiss());
-
-        loadRecipes(recipesRecyclerView, dialog);
+        loadRecipes(recipes -> {
+            allRecipes = recipes;
+            AssignedMealsAdapter adapter = new AssignedMealsAdapter(recipes, recipe -> {
+                assignMealToDay(selectedDay, recipe.getId());
+                dialog.dismiss();
+            });
+            recipesRecyclerView.setAdapter(adapter);
+        });
 
         dialog.show();
     }
 
-    private void loadRecipes(RecyclerView recyclerView, Dialog dialog) {
+    private void assignMealToDay(String day, String recipeId) {
         String userId = auth.getCurrentUser().getUid();
-        Snackbar.make(requireView(), "Loading recipes for user: " + userId, Snackbar.LENGTH_SHORT).show();
 
-        // First, verify if the collection exists and has documents
-        db.collection("recipes").get()
-                .addOnSuccessListener(allDocs -> {
-                    Snackbar.make(requireView(), "Total recipes in collection: " + allDocs.size(),
-                            Snackbar.LENGTH_SHORT).show();
+        db.collection("meal_plans")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("day", day)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (queryDocumentSnapshots.isEmpty()) {
+                        // Create new meal plan for the day
+                        Map<String, Object> mealPlan = new HashMap<>();
+                        mealPlan.put("userId", userId);
+                        mealPlan.put("day", day);
+                        mealPlan.put("recipeIds", Arrays.asList(recipeId));
 
-                    // Now query for user's recipes
-                    db.collection("recipes")
-                            .whereEqualTo("userId", userId)
-                            .get()
-                            .addOnSuccessListener(queryDocumentSnapshots -> {
-                                int totalDocs = queryDocumentSnapshots.size();
-                                Snackbar.make(requireView(), "Found " + totalDocs + " recipes for current user",
-                                        Snackbar.LENGTH_SHORT).show();
-
-                                if (totalDocs == 0) {
-                                    // Let's check the first few documents to see if userId field exists
-                                    if (allDocs.size() > 0) {
-                                        DocumentSnapshot firstDoc = allDocs.getDocuments().get(0);
-                                        String fields = firstDoc.getData() != null ? firstDoc.getData().toString()
-                                                : "no data";
-                                        requireActivity().runOnUiThread(() -> {
-                                            Snackbar.make(recyclerView, "First document fields: " + fields,
-                                                    Snackbar.LENGTH_LONG).show();
-                                        });
-                                    }
-                                }
-
-                                List<Map<String, Object>> recipes = new ArrayList<>();
-                                for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                                    Map<String, Object> recipe = document.getData();
-                                    recipe.put("id", document.getId());
-                                    recipes.add(recipe);
-                                }
-
-                                if (recipes.isEmpty()) {
-                                    Snackbar.make(requireView(), "No recipes found. Add some recipes first!",
-                                            Snackbar.LENGTH_LONG)
-                                            .show();
-                                    dialog.dismiss();
-                                } else {
-                                    setupRecipesAdapter(recyclerView, recipes, dialog);
-                                }
-                            })
-                            .addOnFailureListener(e -> {
-                                String errorMsg = "Failed to load recipes: " + e.getMessage();
-                                Snackbar.make(requireView(), errorMsg, Snackbar.LENGTH_LONG).show();
-                                dialog.dismiss();
-                            });
+                        db.collection("meal_plans")
+                                .add(mealPlan)
+                                .addOnSuccessListener(documentReference -> {
+                                    Snackbar.make(binding.getRoot(), "Meal assigned successfully",
+                                            Snackbar.LENGTH_SHORT).show();
+                                    loadMealPlan(); // Refresh the data
+                                })
+                                .addOnFailureListener(e -> handleError("Failed to assign meal"));
+                    } else {
+                        // Update existing meal plan
+                        DocumentSnapshot document = queryDocumentSnapshots.getDocuments().get(0);
+                        List<String> recipeIds = (List<String>) document.get("recipeIds");
+                        if (recipeIds == null) {
+                            recipeIds = new ArrayList<>();
+                        }
+                        if (!recipeIds.contains(recipeId)) {
+                            recipeIds.add(recipeId);
+                            document.getReference()
+                                    .update("recipeIds", recipeIds)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Snackbar.make(binding.getRoot(), "Meal assigned successfully",
+                                                Snackbar.LENGTH_SHORT).show();
+                                        loadMealPlan(); // Refresh the data
+                                    })
+                                    .addOnFailureListener(e -> handleError("Failed to update meal plan"));
+                        }
+                    }
                 })
-                .addOnFailureListener(e -> {
-                    String errorMsg = "Failed to check recipes collection: " + e.getMessage();
-                    Snackbar.make(requireView(), errorMsg, Snackbar.LENGTH_LONG).show();
-                    dialog.dismiss();
-                });
+                .addOnFailureListener(e -> handleError("Failed to check existing meal plan"));
     }
 
-    private void setupRecipesAdapter(RecyclerView recyclerView, List<Map<String, Object>> recipes, Dialog dialog) {
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        RecipeAssignAdapter adapter = new RecipeAssignAdapter(recipes, (recipe, day) -> {
-            assignMealToDay(recipe, day);
-            dialog.dismiss();
-        });
-        recyclerView.setAdapter(adapter);
-    }
-
-    private void loadWeeklyMeals() {
-        // Load meals from Firestore for the current week
-        weeklyMeals.clear();
-        loadMealPlan();
-    }
-
-    private void assignMealToDay(Map<String, Object> recipe, String day) {
-        // Find the corresponding MealDay
+    private MealDay findMealDayByName(String dayName) {
         for (MealDay mealDay : mealDays) {
-            if (mealDay.getDay().equals(day)) {
-                // Create a Recipe object from the map with all required data
-                Recipe newRecipe = new Recipe();
-                newRecipe.setId((String) recipe.get("id"));
-                newRecipe.setName((String) recipe.get("name"));
-                newRecipe.setDescription((String) recipe.get("description"));
-                newRecipe.setImageUrl((String) recipe.get("imageUrl"));
-                newRecipe.setCategory((String) recipe.get("category"));
-                newRecipe.setCookingTime(((Long) recipe.get("cookingTime")).intValue());
-                newRecipe.setServings(((Long) recipe.get("servings")).intValue());
-                newRecipe.setTotalPrice(((Number) recipe.get("totalPrice")).doubleValue());
-                newRecipe.setUserId((String) recipe.get("userId"));
-
-                // Add the recipe to the day
-                mealDay.getRecipes().add(newRecipe);
-
-                // Update Firestore with complete recipe data
-                Map<String, Object> update = new HashMap<>();
-                List<Map<String, Object>> meals = new ArrayList<>();
-                for (Recipe r : mealDay.getRecipes()) {
-                    Map<String, Object> meal = new HashMap<>();
-                    meal.put("recipeId", r.getId());
-                    meal.put("name", r.getName());
-                    meal.put("description", r.getDescription());
-                    meal.put("imageUrl", r.getImageUrl());
-                    meal.put("category", r.getCategory());
-                    meal.put("cookingTime", r.getCookingTime());
-                    meal.put("servings", r.getServings());
-                    meal.put("totalPrice", r.getTotalPrice());
-                    meal.put("userId", r.getUserId());
-                    meals.add(meal);
-                }
-                update.put(day, meals);
-
-                db.collection("mealPlans")
-                        .document(auth.getCurrentUser().getUid())
-                        .set(update, SetOptions.merge())
-                        .addOnSuccessListener(aVoid -> {
-                            adapter.notifyDataSetChanged();
-                            Snackbar.make(requireView(), "Meal assigned successfully", Snackbar.LENGTH_SHORT).show();
-                        })
-                        .addOnFailureListener(e -> Snackbar
-                                .make(requireView(), "Failed to assign meal: " + e.getMessage(), Snackbar.LENGTH_LONG)
-                                .show());
-
-                break;
+            if (mealDay.getDay().equals(dayName)) {
+                return mealDay;
             }
         }
-    }
-
-    private void showAssignMealDialog(MealDay mealDay) {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_assign_meals, null);
-        RecyclerView recipesRecyclerView = dialogView.findViewById(R.id.recipesRecyclerView);
-
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle("Assign Meal for " + mealDay.getDay())
-                .setView(dialogView)
-                .setNegativeButton("Cancel", null)
-                .create();
-
-        RecipeAdapter recipeAdapter = new RecipeAdapter(allRecipes, recipe -> {
-            assignRecipeToDay(mealDay, recipe);
-            dialog.dismiss();
-        });
-
-        recipesRecyclerView.setAdapter(recipeAdapter);
-        recipesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-
-        dialog.show();
-    }
-
-    private void assignRecipeToDay(MealDay mealDay, Recipe recipe) {
-        List<Recipe> dayRecipes = mealDay.getRecipes();
-        dayRecipes.add(recipe);
-
-        // Update Firestore
-        Map<String, Object> update = new HashMap<>();
-        List<Map<String, Object>> meals = new ArrayList<>();
-
-        for (Recipe r : dayRecipes) {
-            Map<String, Object> meal = new HashMap<>();
-            meal.put("recipeId", r.getId());
-            meals.add(meal);
-        }
-
-        update.put(mealDay.getDay(), meals);
-
-        db.collection("mealPlans")
-                .document(auth.getCurrentUser().getUid())
-                .set(update, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> {
-                    adapter.notifyDataSetChanged();
-                    Snackbar.make(requireView(), "Meal assigned successfully", Snackbar.LENGTH_SHORT).show();
-                })
-                .addOnFailureListener(e -> Snackbar
-                        .make(requireView(), "Failed to assign meal: " + e.getMessage(), Snackbar.LENGTH_LONG).show());
+        return null;
     }
 
     private void removeMealFromDay(MealDay mealDay, Recipe recipe) {
@@ -420,6 +356,12 @@ public class MealsFragment extends Fragment {
                 .addOnFailureListener(e -> Snackbar
                         .make(requireView(), "Failed to remove meal: " + e.getMessage(), Snackbar.LENGTH_LONG)
                         .show());
+    }
+
+    private void handleError(String errorMessage) {
+        if (getActivity() != null && getView() != null) {
+            Snackbar.make(getView(), errorMessage, Snackbar.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -465,12 +407,16 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
         private final TextView recipeName;
         private final TextView cookingTime;
         private final TextView servings;
+        private final TextView recipeCategory;
+        private final ImageView recipeImage;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             recipeName = itemView.findViewById(R.id.recipeName);
             cookingTime = itemView.findViewById(R.id.cookingTime);
             servings = itemView.findViewById(R.id.servings);
+            recipeCategory = itemView.findViewById(R.id.recipeCategory);
+            recipeImage = itemView.findViewById(R.id.recipeImage);
 
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
@@ -484,19 +430,32 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
             recipeName.setText(recipe.getName());
             cookingTime.setText(recipe.getCookingTime() + " min");
             servings.setText(recipe.getServings() + " servings");
+            recipeCategory.setText(recipe.getCategory());
+
+            String imageUrl = recipe.getImageUrl();
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                Glide.with(itemView.getContext())
+                        .load(imageUrl)
+                        .placeholder(R.drawable.placeholder_recipe)
+                        .error(R.drawable.placeholder_recipe)
+                        .centerCrop()
+                        .into(recipeImage);
+            } else {
+                recipeImage.setImageResource(R.drawable.placeholder_recipe);
+            }
         }
     }
 }
 
 class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewHolder> {
     private final List<Map<String, Object>> recipes;
-    private final OnRecipeAssignListener listener;
+    private final OnRecipeClickListener listener;
 
-    public interface OnRecipeAssignListener {
-        void onRecipeAssigned(Map<String, Object> recipe, String day);
+    public interface OnRecipeClickListener {
+        void onRecipeClick(Map<String, Object> recipe);
     }
 
-    public RecipeAssignAdapter(List<Map<String, Object>> recipes, OnRecipeAssignListener listener) {
+    public RecipeAssignAdapter(List<Map<String, Object>> recipes, OnRecipeClickListener listener) {
         this.recipes = recipes;
         this.listener = listener;
     }
@@ -524,7 +483,7 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
         private final TextView recipeName;
         private final TextView cookingTime;
         private final TextView servings;
-        private final Spinner daySpinner;
+        private final TextView recipeCategory;
         private final ImageView recipeImage;
 
         public ViewHolder(@NonNull View itemView) {
@@ -532,31 +491,13 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
             recipeName = itemView.findViewById(R.id.recipeName);
             cookingTime = itemView.findViewById(R.id.cookingTime);
             servings = itemView.findViewById(R.id.servings);
-            daySpinner = itemView.findViewById(R.id.daySpinner);
+            recipeCategory = itemView.findViewById(R.id.recipeCategory);
             recipeImage = itemView.findViewById(R.id.recipeImage);
 
-            setupDaySpinner();
-        }
-
-        private void setupDaySpinner() {
-            String[] days = { "Select day", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-                    "Saturday" };
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(itemView.getContext(),
-                    android.R.layout.simple_spinner_item, days);
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            daySpinner.setAdapter(adapter);
-
-            daySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                    if (position > 0) {
-                        listener.onRecipeAssigned(recipes.get(getAdapterPosition()), days[position]);
-                        daySpinner.setSelection(0);
-                    }
-                }
-
-                @Override
-                public void onNothingSelected(android.widget.AdapterView<?> parent) {
+            itemView.setOnClickListener(v -> {
+                int position = getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    listener.onRecipeClick(recipes.get(position));
                 }
             });
         }
@@ -566,29 +507,36 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
                 String name = (String) recipe.get("name");
                 Long cookingTimeValue = (Long) recipe.get("cookingTime");
                 Long servingsValue = (Long) recipe.get("servings");
+                String category = (String) recipe.get("category");
                 String imageUrl = (String) recipe.get("imageUrl");
 
                 recipeName.setText(name != null ? name : "Unnamed Recipe");
                 cookingTime.setText(cookingTimeValue != null ? cookingTimeValue + " min" : "0 min");
                 servings.setText(servingsValue != null ? servingsValue + " servings" : "0 servings");
+                recipeCategory.setText(category != null ? category : "Uncategorized");
 
-                // Load recipe image if available
                 if (imageUrl != null && !imageUrl.isEmpty()) {
                     Glide.with(itemView.getContext())
                             .load(imageUrl)
+                            .placeholder(R.drawable.placeholder_recipe)
+                            .error(R.drawable.placeholder_recipe)
                             .centerCrop()
                             .into(recipeImage);
-                    recipeImage.setVisibility(View.VISIBLE);
                 } else {
-                    recipeImage.setVisibility(View.GONE);
+                    recipeImage.setImageResource(R.drawable.placeholder_recipe);
                 }
             } catch (Exception e) {
                 // Handle any potential casting errors
                 recipeName.setText("Error loading recipe");
                 cookingTime.setText("--");
                 servings.setText("--");
-                recipeImage.setVisibility(View.GONE);
+                recipeCategory.setText("--");
+                recipeImage.setImageResource(R.drawable.placeholder_recipe);
             }
         }
     }
+}
+
+interface OnRecipesLoadedListener {
+    void onRecipesLoaded(List<Recipe> recipes);
 }

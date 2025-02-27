@@ -224,6 +224,17 @@
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"/>
 
+                    <ImageButton
+                        android:id="@+id/removeImageButton"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="8dp"
+                        android:src="@drawable/ic_close"
+                        android:background="@drawable/circle_background_dark"
+                        android:visibility="gone"
+                        app:tint="@color/white"/>
+
                     <LinearLayout
                         android:id="@+id/uploadPromptLayout"
                         android:layout_width="match_parent"
@@ -243,7 +254,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:text="Click to upload recipe image"
+                            android:text="Click to upload recipe image (optional)"
                             android:textColor="@color/gray"/>
                     </LinearLayout>
                 </FrameLayout>

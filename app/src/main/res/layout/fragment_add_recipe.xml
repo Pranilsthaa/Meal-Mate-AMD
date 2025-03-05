@@ -77,7 +77,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Recipe"
-                        android:textColor="@color/gray"
+                        android:textColor="@color/white"
                         android:textSize="14sp"/>
                     <EditText
                         android:id="@+id/recipeNameInput"
@@ -95,7 +95,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Description"
-                        android:textColor="@color/gray"
+                        android:textColor="@color/white"
                         android:textSize="14sp"/>
                     <EditText
                         android:id="@+id/recipeDescriptionInput"
@@ -126,7 +126,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Cooking Time"
-                                android:textColor="@color/gray"
+                                android:textColor="@color/white"
                                 android:textSize="14sp"/>
 
                             <EditText
@@ -153,7 +153,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Servings"
-                                android:textColor="@color/gray"
+                                android:textColor="@color/white"
                                 android:textSize="14sp"/>
 
                             <EditText
@@ -174,7 +174,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Category"
-                        android:textColor="@color/gray"
+                        android:textColor="@color/white"
                         android:textSize="14sp" />
 
                     <RelativeLayout
@@ -294,7 +294,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Total: NRS 0.00"
-                            android:textColor="@color/gray"/>
+                            android:textColor="@color/primary"/>
                     </LinearLayout>
 
                     <LinearLayout

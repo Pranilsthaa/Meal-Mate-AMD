@@ -20,7 +20,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Select Day"
+            android:text="Assign Meals"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold"/>
@@ -42,12 +42,10 @@
         android:layout_marginBottom="16dp"
         android:paddingHorizontal="12dp"/>
 
-    <Button
-        android:id="@+id/selectDayButton"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recipesRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Continue"
-        android:textColor="@color/white"
-        android:backgroundTint="@color/orange"/>
+        android:clipToPadding="false"/>
 
 </LinearLayout> 

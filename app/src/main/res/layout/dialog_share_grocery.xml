@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/black"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Share Grocery List"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- Subtitle -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Share selected items with family or friends"
+        android:textColor="@color/gray"
+        android:textSize="14sp"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Selected Items Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Selected Items:"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- Selected Items List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/selectedItemsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Phone Number Input -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="24dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_phone"
+            android:tint="@color/gray"/>
+
+        <EditText
+            android:id="@+id/phoneNumberInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/input_background"
+            android:hint="Enter Phone Number"
+            android:inputType="phone"
+            android:maxLength="10"
+            android:padding="12dp"
+            android:textColor="@color/white"
+            android:textColorHint="@color/gray"/>
+    </LinearLayout>
+
+    <!-- Share Button -->
+    <Button
+        android:id="@+id/shareButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Share Grocery List"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/orange"
+        android:drawableStart="@drawable/ic_share"
+        android:drawableTint="@color/white"
+        android:drawablePadding="8dp"
+        android:padding="12dp"/>
+
+</LinearLayout> 

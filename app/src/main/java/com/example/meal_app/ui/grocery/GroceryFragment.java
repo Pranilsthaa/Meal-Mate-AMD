@@ -17,6 +17,8 @@ import com.example.meal_app.R;
 import com.example.meal_app.adapter.GroceryAdapter;
 import com.example.meal_app.model.GroceryItem;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -42,6 +44,7 @@ import android.widget.Button;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
+import com.example.meal_app.utils.ToastUtil;
 
 public class GroceryFragment extends Fragment implements GroceryAdapter.OnGroceryItemListener {
 
@@ -60,140 +63,210 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     private ImageButton shareButton;
     private static final int SMS_PERMISSION_REQUEST_CODE = 123;
     private String userPhone;
+    private String pendingPhoneNumber;
+    private List<GroceryItem> pendingItems;
+    private long lastBuyClickTime = 0;
+    private long lastShareClickTime = 0;
+    private long lastSelectionClickTime = 0;
+    private static final long CLICK_DELAY = 500; // 500ms delay between clicks
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_grocery, container, false);
 
-        db = FirebaseFirestore.getInstance();
-        auth = FirebaseAuth.getInstance();
+        try {
+            db = FirebaseFirestore.getInstance();
+            auth = FirebaseAuth.getInstance();
 
-        if (auth.getCurrentUser() != null) {
-            userGroceryRef = db.collection("groceryLists").document(auth.getCurrentUser().getUid());
-            // Load user's phone number
-            db.collection("users").document(auth.getCurrentUser().getUid())
-                    .get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        if (documentSnapshot.exists()) {
-                            userPhone = documentSnapshot.getString("phone");
-                        }
-                    });
+            // Initialize views first
+            progressText = root.findViewById(R.id.progressText);
+            progressBar = root.findViewById(R.id.progressBar);
+            totalPriceText = root.findViewById(R.id.totalPrice);
+            remainingPriceText = root.findViewById(R.id.remainingPrice);
+            EditText searchInput = root.findViewById(R.id.searchInput);
+            RecyclerView recyclerView = root.findViewById(R.id.groceryRecyclerView);
+            shareButton = root.findViewById(R.id.shareButton);
+
+            // Setup RecyclerView
+            recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+            adapter = new GroceryAdapter(filteredItems, this);
+            recyclerView.setAdapter(adapter);
+
+            // Setup share button
+            shareButton.setOnClickListener(v -> showShareDialog());
+
+            // Setup search functionality
+            searchInput.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    filterItems(s.toString());
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                }
+            });
+
+            // Check if user is logged in
+            if (auth.getCurrentUser() != null) {
+                userGroceryRef = db.collection("groceryLists").document(auth.getCurrentUser().getUid());
+                // Load user's phone number
+                db.collection("users").document(auth.getCurrentUser().getUid())
+                        .get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            if (documentSnapshot.exists()) {
+                                userPhone = documentSnapshot.getString("phone");
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            if (getView() != null) {
+                                ToastUtil.showErrorToast(requireContext(), "Error loading user data: " + e.getMessage());
+                            }
+                        });
+            } else {
+                // User is not logged in, show message
+                if (getView() != null) {
+                    ToastUtil.showErrorToast(requireContext(), "Please log in to view your grocery list");
+                }
+                return root;
+            }
+
+            // Load grocery items
+            loadGroceryItems();
+
+        } catch (Exception e) {
+            if (getView() != null) {
+                ToastUtil.showErrorToast(requireContext(), "Error initializing grocery list: " + e.getMessage());
+            }
+            e.printStackTrace();
         }
-
-        // Initialize views
-        progressText = root.findViewById(R.id.progressText);
-        progressBar = root.findViewById(R.id.progressBar);
-        totalPriceText = root.findViewById(R.id.totalPrice);
-        remainingPriceText = root.findViewById(R.id.remainingPrice);
-        EditText searchInput = root.findViewById(R.id.searchInput);
-        RecyclerView recyclerView = root.findViewById(R.id.groceryRecyclerView);
-        shareButton = root.findViewById(R.id.shareButton);
-
-        // Setup RecyclerView
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new GroceryAdapter(filteredItems, this);
-        recyclerView.setAdapter(adapter);
-
-        // Setup share button
-        shareButton.setOnClickListener(v -> showShareDialog());
-
-        // Setup search functionality
-        searchInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                filterItems(s.toString());
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-
-        // Load grocery items
-        loadGroceryItems();
 
         return root;
     }
 
     private void loadGroceryItems() {
-        if (auth.getCurrentUser() == null) {
+        if (auth.getCurrentUser() == null || userGroceryRef == null) {
+            if (getView() != null) {
+                ToastUtil.showErrorToast(requireContext(), "Please log in to view your grocery list");
+            }
             return;
         }
 
-        String userId = auth.getCurrentUser().getUid();
+        try {
+            String userId = auth.getCurrentUser().getUid();
+            System.out.println("Loading grocery items for user: " + userId);
 
-        // First, get user's grocery list state
-        userGroceryRef.get().addOnSuccessListener(documentSnapshot -> {
-            Map<String, Object> groceryState = documentSnapshot.exists() ? documentSnapshot.getData() : new HashMap<>();
+            // Get the grocery list data directly from groceryLists collection
+            userGroceryRef.get().addOnSuccessListener(documentSnapshot -> {
+                try {
+                    System.out.println("Document exists: " + documentSnapshot.exists());
+                    if (!documentSnapshot.exists()) {
+                        if (getView() != null) {
+                            ToastUtil.showErrorToast(requireContext(), "No grocery list found for this user");
+                        }
+                        return;
+                    }
 
-            // Then, get all recipes
-            db.collection("recipes")
-                    .whereEqualTo("userId", userId)
-                    .get()
-                    .addOnSuccessListener(recipeSnapshots -> {
-                        Map<String, GroceryItem> groceryItems = new HashMap<>();
+                    // Log all fields in the document
+                    Map<String, Object> data = documentSnapshot.getData();
+                    System.out.println("Document data: " + data);
 
-                        // Process each recipe
-                        for (QueryDocumentSnapshot recipeDoc : recipeSnapshots) {
-                            List<Map<String, Object>> ingredients = (List<Map<String, Object>>) recipeDoc
-                                    .get("ingredients");
-                            if (ingredients != null) {
-                                for (Map<String, Object> ingredient : ingredients) {
-                                    String name = (String) ingredient.get("name");
-                                    Double quantity = (Double) ingredient.get("quantity");
-                                    String unit = (String) ingredient.get("unit");
-                                    String category = (String) ingredient.get("category");
-                                    Double price = (Double) ingredient.get("price");
+                    List<GroceryItem> items = new ArrayList<>();
+                    
+                    // Process each field in the document
+                    for (Map.Entry<String, Object> entry : data.entrySet()) {
+                        try {
+                            String fieldName = entry.getKey();
+                            Object value = entry.getValue();
+                            
+                            // Skip non-item fields
+                            if (fieldName.equals("groceryState")) {
+                                continue;
+                            }
 
-                                    if (name != null && quantity != null && unit != null && price != null) {
-                                        String itemId = name.toLowerCase();
-                                        if (groceryItems.containsKey(itemId)) {
-                                            // Update existing item
-                                            GroceryItem existingItem = groceryItems.get(itemId);
-                                            existingItem.setQuantity(existingItem.getQuantity() + quantity);
-                                            existingItem.setPrice(existingItem.getPrice() + price);
-                                        } else {
-                                            // Create new item
-                                            GroceryItem item = new GroceryItem(itemId, name, quantity, unit, category,
-                                                    price);
+                            // Each item is stored as a map
+                            if (value instanceof Map) {
+                                Map<String, Object> itemData = (Map<String, Object>) value;
+                                System.out.println("Processing item: " + fieldName);
+                                System.out.println("Item data: " + itemData);
 
-                                            // Apply saved state if exists
-                                            if (groceryState.containsKey(itemId)) {
-                                                Map<String, Object> state = (Map<String, Object>) groceryState
-                                                        .get(itemId);
-                                                if (state != null) {
-                                                    item.setPurchased((Boolean) state.get("isPurchased"));
-                                                    item.setSelectedForSms((Boolean) state.get("isSelectedForSms"));
-                                                }
-                                            }
+                                String name = (String) itemData.get("name");
+                                Double quantity = ((Number) itemData.get("quantity")).doubleValue();
+                                String unit = (String) itemData.get("unit");
+                                String category = (String) itemData.get("category");
+                                Double price = ((Number) itemData.get("price")).doubleValue();
+                                Boolean isPurchased = (Boolean) itemData.get("isPurchased");
+                                Boolean isSelectedForSms = (Boolean) itemData.get("isSelectedForSms");
 
-                                            groceryItems.put(itemId, item);
-                                        }
+                                System.out.println("Parsed values - name: " + name + 
+                                    ", quantity: " + quantity + 
+                                    ", unit: " + unit + 
+                                    ", category: " + category + 
+                                    ", price: " + price +
+                                    ", isPurchased: " + isPurchased +
+                                    ", isSelectedForSms: " + isSelectedForSms);
+
+                                if (name != null && quantity != null && unit != null && price != null) {
+                                    GroceryItem item = new GroceryItem(fieldName, name, quantity, unit, category, price);
+                                    if (isPurchased != null) {
+                                        item.setPurchased(isPurchased);
                                     }
+                                    if (isSelectedForSms != null) {
+                                        item.setSelectedForSms(isSelectedForSms);
+                                    }
+                                    items.add(item);
+                                    System.out.println("Added item to list: " + item.getName());
+                                } else {
+                                    System.out.println("Skipping item due to missing required fields");
                                 }
                             }
+                        } catch (Exception e) {
+                            System.out.println("Error processing item: " + e.getMessage());
+                            e.printStackTrace();
                         }
+                    }
 
-                        // Update the items list
-                        allItems = new ArrayList<>(groceryItems.values());
-                        filteredItems.clear();
-                        filteredItems.addAll(allItems);
-                        adapter.notifyDataSetChanged();
+                    System.out.println("Total items processed: " + items.size());
 
-                        // Update totals
-                        updateTotals();
-                    })
-                    .addOnFailureListener(e -> {
-                        if (getView() != null) {
-                            Snackbar.make(getView(), "Error loading grocery list: " + e.getMessage(),
-                                    Snackbar.LENGTH_LONG).show();
-                        }
-                    });
-        });
+                    // Update the items list
+                    allItems = items;
+                    filteredItems.clear();
+                    filteredItems.addAll(allItems);
+                    adapter.notifyDataSetChanged();
+
+                    // Update totals
+                    updateTotals();
+
+                    // Update share button visibility
+                    boolean hasSelectedItems = filteredItems.stream().anyMatch(GroceryItem::isSelectedForSms);
+                    shareButton.setVisibility(hasSelectedItems ? View.VISIBLE : View.GONE);
+
+                } catch (Exception e) {
+                    System.out.println("Error processing grocery list: " + e.getMessage());
+                    e.printStackTrace();
+                    if (getView() != null) {
+                        ToastUtil.showErrorToast(requireContext(), "Error processing grocery list: " + e.getMessage());
+                    }
+                }
+            })
+            .addOnFailureListener(e -> {
+                System.out.println("Error loading grocery list: " + e.getMessage());
+                e.printStackTrace();
+                if (getView() != null) {
+                    ToastUtil.showErrorToast(requireContext(), "Error loading grocery list: " + e.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            System.out.println("Error initializing grocery list: " + e.getMessage());
+            e.printStackTrace();
+            if (getView() != null) {
+                ToastUtil.showErrorToast(requireContext(), "Error initializing grocery list: " + e.getMessage());
+            }
+        }
     }
 
     private void filterItems(String query) {
@@ -211,66 +284,112 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void updateTotals() {
-        int totalItems = filteredItems.size();
-        int purchasedItems = (int) filteredItems.stream().filter(GroceryItem::isPurchased).count();
+        if (getView() == null) return;
 
-        // Update progress
-        progressText.setText(String.format("%d/%d items", purchasedItems, totalItems));
-        progressBar.setMax(totalItems);
-        progressBar.setProgress(purchasedItems);
+        totalPrice = allItems.stream()
+            .mapToDouble(GroceryItem::getPrice)
+            .sum();
 
-        // Update prices
-        totalPrice = filteredItems.stream().mapToDouble(GroceryItem::getPrice).sum();
-        remainingPrice = filteredItems.stream()
-                .filter(item -> !item.isPurchased())
-                .mapToDouble(GroceryItem::getPrice)
-                .sum();
+        remainingPrice = allItems.stream()
+            .filter(item -> !item.isPurchased())
+            .mapToDouble(GroceryItem::getPrice)
+            .sum();
 
-        totalPriceText.setText(String.format("Nrs %.0f", totalPrice));
-        remainingPriceText.setText(String.format("Nrs %.0f", remainingPrice));
-    }
-
-    private void updateGroceryItemState(GroceryItem item) {
-        if (userGroceryRef != null) {
-            Map<String, Object> updates = new HashMap<>();
-            updates.put(item.getId(), item.toMap());
-            userGroceryRef.set(updates, SetOptions.merge())
-                    .addOnSuccessListener(aVoid -> adapter.updateItem(item))
-                    .addOnFailureListener(e -> {
-                        if (getView() != null) {
-                            Snackbar.make(getView(), "Failed to update item: " + e.getMessage(),
-                                    Snackbar.LENGTH_LONG).show();
-                        }
-                        // Revert the item's state
-                        item.setPurchased(!item.isPurchased());
-                        adapter.updateItem(item);
-                    });
-        }
+        // Calculate progress as percentage of purchased items
+        double progress = totalPrice > 0 ? ((totalPrice - remainingPrice) / totalPrice) * 100 : 0;
+        progressBar.setProgress((int) progress);
+        progressText.setText(String.format("%.1f%%", progress));
+        totalPriceText.setText(String.format("Total: Nrs %.0f", totalPrice));
+        remainingPriceText.setText(String.format("Remaining: Nrs %.0f", remainingPrice));
     }
 
     @Override
     public void onItemSelectedForSms(GroceryItem item, boolean isSelected) {
-        item.setSelectedForSms(isSelected);
-        updateGroceryItemState(item);
+        // Prevent rapid clicking
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastSelectionClickTime < CLICK_DELAY) {
+            return;
+        }
+        lastSelectionClickTime = currentTime;
 
-        // Show/hide share button based on selection
-        boolean hasSelectedItems = filteredItems.stream().anyMatch(GroceryItem::isSelectedForSms);
-        shareButton.setVisibility(hasSelectedItems ? View.VISIBLE : View.GONE);
+        if (auth.getCurrentUser() == null || userGroceryRef == null) {
+            ToastUtil.showErrorToast(requireContext(), "Please log in to update items");
+            return;
+        }
+
+        item.setSelectedForSms(isSelected);
+
+        // Create a map with all the item's data
+        Map<String, Object> itemData = item.toMap();
+        
+        // Update in Firestore using update with the item's ID
+        userGroceryRef.update(item.getId(), itemData)
+            .addOnSuccessListener(aVoid -> {
+                adapter.updateItem(item);
+                // Show/hide share button based on selection
+                boolean hasSelectedItems = filteredItems.stream().anyMatch(GroceryItem::isSelectedForSms);
+                shareButton.setVisibility(hasSelectedItems ? View.VISIBLE : View.GONE);
+                ToastUtil.showSuccessToast(requireContext(), 
+                    isSelected ? "Item selected for sharing" : "Item unselected for sharing");
+            })
+            .addOnFailureListener(e -> {
+                // Revert the change if update fails
+                item.setSelectedForSms(!isSelected);
+                adapter.updateItem(item);
+                if (getView() != null) {
+                    ToastUtil.showErrorToast(requireContext(), "Error updating selection: " + e.getMessage());
+                }
+            });
     }
 
     @Override
     public void onBuyClicked(GroceryItem item) {
-        item.setPurchased(true);
-        updateGroceryItemState(item);
-        updateTotals();
+        // Prevent rapid clicking
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastBuyClickTime < CLICK_DELAY) {
+            return;
+        }
+        lastBuyClickTime = currentTime;
+
+        if (auth.getCurrentUser() == null || userGroceryRef == null) {
+            ToastUtil.showErrorToast(requireContext(), "Please log in to update items");
+            return;
+        }
+
+        // Toggle the purchased state
+        boolean newPurchasedState = !item.isPurchased();
+        item.setPurchased(newPurchasedState);
+
+        // Create a map with all the item's data
+        Map<String, Object> itemData = item.toMap();
+        
+        // Update in Firestore using update with the item's ID
+        userGroceryRef.update(item.getId(), itemData)
+            .addOnSuccessListener(aVoid -> {
+                adapter.updateItem(item);
+                updateTotals();
+                ToastUtil.showSuccessToast(requireContext(), 
+                    newPurchasedState ? "Item marked as purchased" : "Item marked as unpurchased");
+            })
+            .addOnFailureListener(e -> {
+                // Revert the change if update fails
+                item.setPurchased(!newPurchasedState);
+                adapter.updateItem(item);
+                ToastUtil.showErrorToast(requireContext(), "Error updating item: " + e.getMessage());
+            });
     }
 
     private void showShareDialog() {
+        // Prevent rapid clicking
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastShareClickTime < CLICK_DELAY) {
+            return;
+        }
+        lastShareClickTime = currentTime;
+
         List<GroceryItem> selectedItems = getSelectedItems();
         if (selectedItems.isEmpty()) {
-            if (getView() != null) {
-                Snackbar.make(getView(), "Please select items to share", Snackbar.LENGTH_SHORT).show();
-            }
+            ToastUtil.showErrorToast(requireContext(), "Please select items to share");
             return;
         }
 
@@ -315,7 +434,10 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private boolean validatePhoneNumber(String phoneNumber) {
-        return phoneNumber.matches("^[0-9]{10}$");
+        // Allow phone numbers with or without country code
+        // Nepal phone numbers are 10 digits without country code
+        // With country code (+977), they would be 13 or 14 digits
+        return phoneNumber.matches("^(\\+977)?[0-9]{10}$");
     }
 
     private List<GroceryItem> getSelectedItems() {
@@ -325,11 +447,26 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void requestSmsPermissionAndSend(String phoneNumber, List<GroceryItem> items) {
+        // Store the data for later use after permission is granted
+        this.pendingPhoneNumber = phoneNumber;
+        this.pendingItems = new ArrayList<>(items);
+        
         if (ContextCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(requireActivity(),
-                    new String[]{Manifest.permission.SEND_SMS},
-                    SMS_PERMISSION_REQUEST_CODE);
+            // Show explanation if needed
+            if (shouldShowRequestPermissionRationale(Manifest.permission.SEND_SMS)) {
+                ToastUtil.showErrorToast(requireContext(), 
+                    "SMS permission is needed to share your grocery list");
+                
+                // Request permission after showing explanation
+                ActivityCompat.requestPermissions(requireActivity(),
+                        new String[]{Manifest.permission.SEND_SMS},
+                        SMS_PERMISSION_REQUEST_CODE);
+            } else {
+                ActivityCompat.requestPermissions(requireActivity(),
+                        new String[]{Manifest.permission.SEND_SMS},
+                        SMS_PERMISSION_REQUEST_CODE);
+            }
         } else {
             sendSms(phoneNumber, items);
         }
@@ -351,17 +488,41 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                         .append("\n");
             }
 
+            // Format phone number
+            String formattedNumber = phoneNumber;
+            if (!phoneNumber.startsWith("+")) {
+                // Remove any spaces or special characters
+                phoneNumber = phoneNumber.replaceAll("[^0-9]", "");
+                // Add Nepal country code if not present
+                if (phoneNumber.length() == 10) {
+                    formattedNumber = "+977" + phoneNumber;
+                } else if (phoneNumber.length() == 13 && phoneNumber.startsWith("977")) {
+                    formattedNumber = "+" + phoneNumber;
+                }
+            }
+
+            // Validate the final phone number
+            if (!formattedNumber.matches("^\\+977[0-9]{10}$")) {
+                throw new IllegalArgumentException("Invalid phone number format");
+            }
+
             SmsManager smsManager = SmsManager.getDefault();
             ArrayList<String> parts = smsManager.divideMessage(message.toString());
-            smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null);
+            
+            // Send SMS parts
+            for (String part : parts) {
+                smsManager.sendTextMessage(formattedNumber, null, part, null, null);
+            }
 
             if (getView() != null) {
-                Snackbar.make(getView(), "Grocery list shared successfully", Snackbar.LENGTH_SHORT).show();
+                ToastUtil.showSuccessToast(requireContext(), "Grocery list shared successfully");
             }
+        } catch (IllegalArgumentException e) {
+            ToastUtil.showErrorToast(requireContext(), 
+                "Invalid phone number format. Please enter a valid 10-digit number.");
         } catch (Exception e) {
-            if (getView() != null) {
-                Snackbar.make(getView(), "Failed to send SMS: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-            }
+            ToastUtil.showErrorToast(requireContext(), "Failed to send SMS: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -370,17 +531,20 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             @NonNull int[] grantResults) {
         if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, retry sending SMS
-                if (getView() != null) {
-                    Snackbar.make(getView(), "Permission granted. Please try sharing again.", Snackbar.LENGTH_SHORT)
-                            .show();
+                if (pendingPhoneNumber != null && pendingItems != null) {
+                    sendSms(pendingPhoneNumber, pendingItems);
+                    pendingPhoneNumber = null;
+                    pendingItems = null;
+                } else {
+                    ToastUtil.showErrorToast(requireContext(), 
+                        "Permission granted. Please try sharing again.");
                 }
             } else {
-                if (getView() != null) {
-                    Snackbar.make(getView(), "SMS permission denied. Cannot share grocery list.", Snackbar.LENGTH_LONG)
-                            .show();
-                }
+                ToastUtil.showErrorToast(requireContext(), 
+                    "SMS permission denied. Cannot share grocery list.");
             }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
 }

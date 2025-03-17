@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Handle back navigation
+        // Handle navigation without reloading data
         binding.navView.setOnItemSelectedListener(item -> {
             navController.navigate(item.getItemId());
             return true;

@@ -11,7 +11,7 @@ public class GroceryItem {
     private String category;
     private double price;
     private boolean isPurchased;
-    private boolean isSelectedForSms;
+    private boolean isSelectedForSms; // Remove transient to persist the field
 
     public GroceryItem() {
         // Required empty constructor for Firestore
@@ -96,7 +96,6 @@ public class GroceryItem {
     // Convert to Firestore Map
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
-        map.put("id", id);
         map.put("name", name);
         map.put("quantity", quantity);
         map.put("unit", unit);

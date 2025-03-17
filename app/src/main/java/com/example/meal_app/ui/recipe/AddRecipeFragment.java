@@ -29,7 +29,9 @@ import com.example.meal_app.R;
 import com.example.meal_app.utils.Constants;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 import okhttp3.*;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -386,20 +388,79 @@ public class AddRecipeFragment extends Fragment {
     }
 
     private void saveRecipeToFirestore(Map<String, Object> recipe) {
-        db.collection("recipes")
-                .add(recipe)
-                .addOnSuccessListener(documentReference -> {
-                    if (loadingSnackbar != null) {
-                        loadingSnackbar.dismiss();
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        DocumentReference userGroceryRef = db.collection("groceryLists").document(userId);
+
+        // First, get the current grocery list to check for existing items
+        userGroceryRef.get().addOnSuccessListener(documentSnapshot -> {
+            Map<String, Object> groceryList = new HashMap<>();
+            if (documentSnapshot.exists()) {
+                groceryList = documentSnapshot.getData();
+            }
+
+            // Get ingredients from the recipe
+            List<Map<String, Object>> ingredients = (List<Map<String, Object>>) recipe.get("ingredients");
+            if (ingredients != null) {
+                // Process each ingredient
+                for (Map<String, Object> ingredient : ingredients) {
+                    String name = (String) ingredient.get("name");
+                    if (name != null) {
+                        // Create a unique ID for the ingredient
+                        String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                        
+                        // Check if ingredient already exists
+                        if (groceryList.containsKey(ingredientId)) {
+                            // Update existing ingredient
+                            Map<String, Object> existingIngredient = (Map<String, Object>) groceryList.get(ingredientId);
+                            double existingQuantity = ((Number) existingIngredient.get("quantity")).doubleValue();
+                            double newQuantity = ((Number) ingredient.get("quantity")).doubleValue();
+                            double existingPrice = ((Number) existingIngredient.get("price")).doubleValue();
+                            double newPrice = ((Number) ingredient.get("price")).doubleValue();
+                            
+                            // Combine quantities and prices
+                            existingIngredient.put("quantity", existingQuantity + newQuantity);
+                            existingIngredient.put("price", existingPrice + newPrice);
+                        } else {
+                            // Add new ingredient
+                            Map<String, Object> groceryItem = new HashMap<>();
+                            groceryItem.put("name", name);
+                            groceryItem.put("quantity", ingredient.get("quantity"));
+                            groceryItem.put("unit", ingredient.get("unit"));
+                            groceryItem.put("price", ingredient.get("price"));
+                            groceryItem.put("category", recipe.get("category"));
+                            groceryItem.put("isPurchased", false);
+                            groceryItem.put("isSelectedForSms", false);
+                            groceryList.put(ingredientId, groceryItem);
+                        }
                     }
-                    Snackbar.make(requireView(), "Recipe saved successfully!", Snackbar.LENGTH_SHORT).show();
-                    NavController navController = Navigation.findNavController(requireActivity(),
-                            R.id.nav_host_fragment_activity_main);
-                    navController.navigateUp();
-                })
-                .addOnFailureListener(e -> {
-                    handleError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
-                });
+                }
+
+                // Save the updated grocery list
+                userGroceryRef.set(groceryList, SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> {
+                        // Now save the recipe
+                        db.collection("recipes")
+                            .add(recipe)
+                            .addOnSuccessListener(documentReference -> {
+                                if (loadingSnackbar != null) {
+                                    loadingSnackbar.dismiss();
+                                }
+                                Snackbar.make(requireView(), "Recipe saved successfully!", Snackbar.LENGTH_SHORT).show();
+                                NavController navController = Navigation.findNavController(requireActivity(),
+                                        R.id.nav_host_fragment_activity_main);
+                                navController.navigateUp();
+                            })
+                            .addOnFailureListener(e -> {
+                                handleError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
+                            });
+                    })
+                    .addOnFailureListener(e -> {
+                        handleError("Failed to update grocery list: " + e.getMessage() + "\nPlease try again.");
+                    });
+            }
+        }).addOnFailureListener(e -> {
+            handleError("Failed to check grocery list: " + e.getMessage() + "\nPlease try again.");
+        });
     }
 
     private void handleError(String errorMessage) {

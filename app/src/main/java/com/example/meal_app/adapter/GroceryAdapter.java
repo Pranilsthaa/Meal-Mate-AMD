@@ -1,6 +1,5 @@
 package com.example.meal_app.adapter;
 
-import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,17 +11,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.meal_app.R;
 import com.example.meal_app.model.GroceryItem;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class GroceryAdapter extends RecyclerView.Adapter<GroceryAdapter.ViewHolder> {
-    private final List<GroceryItem> items;
-    private final OnGroceryItemListener listener;
-    private final ConcurrentHashMap<String, Boolean> processingItems = new ConcurrentHashMap<>();
+    private List<GroceryItem> items;
+    private OnGroceryItemListener listener;
 
     public interface OnGroceryItemListener {
-        void onItemSelectedForSms(GroceryItem item, boolean isSelected);
-
         void onBuyClicked(GroceryItem item);
+        void onItemSelectedForSms(GroceryItem item, boolean isSelected);
     }
 
     public GroceryAdapter(List<GroceryItem> items, OnGroceryItemListener listener) {
@@ -35,7 +31,7 @@ public class GroceryAdapter extends RecyclerView.Adapter<GroceryAdapter.ViewHold
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_grocery, parent, false);
-        return new ViewHolder(view);
+        return new ViewHolder(view, listener);
     }
 
     @Override
@@ -49,76 +45,69 @@ public class GroceryAdapter extends RecyclerView.Adapter<GroceryAdapter.ViewHold
         return items.size();
     }
 
-    public void updateItem(GroceryItem item) {
-        int position = -1;
+    public void updateItem(GroceryItem updatedItem) {
         for (int i = 0; i < items.size(); i++) {
-            if (items.get(i).getId().equals(item.getId())) {
-                position = i;
+            if (items.get(i).getId().equals(updatedItem.getId())) {
+                items.set(i, updatedItem);
+                notifyItemChanged(i);
                 break;
             }
         }
-        if (position != -1) {
-            items.set(position, item);
-            notifyItemChanged(position);
-        }
-        // Remove from processing map after update
-        processingItems.remove(item.getId());
     }
 
     class ViewHolder extends RecyclerView.ViewHolder {
-        private final CheckBox checkbox;
-        private final TextView ingredientName;
-        private final TextView quantity;
-        private final TextView category;
-        private final TextView price;
-        private final Button buyButton;
+        private TextView nameText;
+        private TextView quantityText;
+        private TextView priceText;
+        private CheckBox smsCheckbox;
+        private Button buyButton;
+        private OnGroceryItemListener itemListener;
 
-        public ViewHolder(@NonNull View itemView) {
+        ViewHolder(View itemView, OnGroceryItemListener listener) {
             super(itemView);
-            checkbox = itemView.findViewById(R.id.checkbox);
-            ingredientName = itemView.findViewById(R.id.ingredientName);
-            quantity = itemView.findViewById(R.id.quantity);
-            category = itemView.findViewById(R.id.category);
-            price = itemView.findViewById(R.id.price);
+            this.itemListener = listener;
+            nameText = itemView.findViewById(R.id.ingredientName);
+            quantityText = itemView.findViewById(R.id.quantity);
+            priceText = itemView.findViewById(R.id.price);
+            smsCheckbox = itemView.findViewById(R.id.checkbox);
             buyButton = itemView.findViewById(R.id.buyButton);
         }
 
-        public void bind(GroceryItem item) {
-            // Set basic information
-            ingredientName.setText(item.getName());
-            quantity.setText(String.format("%.1f %s", item.getQuantity(), item.getUnit()));
-            category.setText(item.getCategory());
-            price.setText(String.format("Nrs %.0f", item.getPrice()));
+        void bind(GroceryItem item) {
+            nameText.setText(item.getName());
+            quantityText.setText(String.format("%.1f %s", item.getQuantity(), item.getUnit()));
+            priceText.setText(String.format("Nrs %.0f", item.getPrice()));
 
-            // Handle SMS selection checkbox
-            checkbox.setOnCheckedChangeListener(null); // Remove previous listener
-            checkbox.setChecked(item.isSelectedForSms());
-            checkbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                item.setSelectedForSms(isChecked);
-                listener.onItemSelectedForSms(item, isChecked);
-            });
+            // Update buy button state
+            updateBuyButtonState(item.isPurchased());
 
-            // Handle purchased state
-            if (item.isPurchased()) {
-                buyButton.setText("Purchased");
-                buyButton.setEnabled(false);
-                buyButton.setAlpha(0.5f);
-                ingredientName.setPaintFlags(ingredientName.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-            } else {
-                buyButton.setText("Buy");
-                buyButton.setEnabled(!processingItems.containsKey(item.getId()));
-                buyButton.setAlpha(1.0f);
-                ingredientName.setPaintFlags(ingredientName.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
-            }
+            // Update checkbox state
+            smsCheckbox.setChecked(item.isSelectedForSms());
+            smsCheckbox.setEnabled(!item.isPurchased());
+            smsCheckbox.setAlpha(item.isPurchased() ? 0.5f : 1.0f);
 
-            // Handle buy button click
+            // Set click listeners
             buyButton.setOnClickListener(v -> {
-                if (!processingItems.containsKey(item.getId())) {
-                    processingItems.put(item.getId(), true);
-                    buyButton.setEnabled(false);
-                    listener.onBuyClicked(item);
+                if (itemListener != null) {
+                    itemListener.onBuyClicked(item);
                 }
             });
+
+            smsCheckbox.setOnClickListener(v -> {
+                if (itemListener != null && !item.isPurchased()) {
+                    itemListener.onItemSelectedForSms(item, smsCheckbox.isChecked());
+                }
+            });
+        }
+
+        private void updateBuyButtonState(boolean isPurchased) {
+            if (isPurchased) {
+                buyButton.setText("Purchased");
+                buyButton.setBackgroundResource(R.drawable.button_purchased_background);
+            } else {
+                buyButton.setText("Buy");
+                buyButton.setBackgroundResource(R.drawable.button_buy_background);
+            }
         }
     }
 }

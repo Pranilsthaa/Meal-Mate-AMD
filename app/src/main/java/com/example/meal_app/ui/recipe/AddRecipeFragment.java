@@ -146,6 +146,13 @@ public class AddRecipeFragment extends Fragment {
         unitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         unitSpinner.setAdapter(unitAdapter);
 
+        // Setup type spinner
+        Spinner typeSpinner = ingredientView.findViewById(R.id.typeSpinner);
+        ArrayAdapter<CharSequence> typeAdapter = ArrayAdapter.createFromResource(requireContext(),
+                R.array.ingredient_types, android.R.layout.simple_spinner_item);
+        typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        typeSpinner.setAdapter(typeAdapter);
+
         // Setup remove button
         ingredientView.findViewById(R.id.removeIngredientButton).setOnClickListener(v -> {
             container.removeView(ingredientView);
@@ -291,6 +298,8 @@ public class AddRecipeFragment extends Fragment {
                     .getText().toString().trim();
             String unit = ((Spinner) ingredientView.findViewById(R.id.unitSpinner))
                     .getSelectedItem().toString();
+            String type = ((Spinner) ingredientView.findViewById(R.id.typeSpinner))
+                    .getSelectedItem().toString();
             String price = ((EditText) ingredientView.findViewById(R.id.priceInput))
                     .getText().toString().trim();
 
@@ -299,6 +308,7 @@ public class AddRecipeFragment extends Fragment {
                 ingredient.put("name", ingredientName);
                 ingredient.put("quantity", Double.parseDouble(quantity));
                 ingredient.put("unit", unit);
+                ingredient.put("type", type);
                 ingredient.put("price", Double.parseDouble(price));
                 ingredients.add(ingredient);
             }

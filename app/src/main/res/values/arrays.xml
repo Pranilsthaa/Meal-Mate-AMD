@@ -4,10 +4,6 @@
         <item>Breakfast</item>
         <item>Lunch</item>
         <item>Dinner</item>
-        <item>Snacks</item>
-        <item>Desserts</item>
-        <item>Beverages</item>
-        <item>Other</item>
     </string-array>
 
     <string-array name="ingredient_units">
@@ -20,5 +16,14 @@
         <item>cup</item>
         <item>piece</item>
         <item>unit</item>
+    </string-array>
+
+    <string-array name="ingredient_types">
+        <item>Vegetables</item>
+        <item>Proteins</item>
+        <item>Dairy</item>
+        <item>Grains</item>
+        <item>Spices &amp; Condiments</item>
+        <item>Beverages</item>
     </string-array>
 </resources> 

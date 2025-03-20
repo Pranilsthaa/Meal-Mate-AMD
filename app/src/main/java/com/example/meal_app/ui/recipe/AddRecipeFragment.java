@@ -436,6 +436,7 @@ public class AddRecipeFragment extends Fragment {
                             groceryItem.put("name", name);
                             groceryItem.put("quantity", ingredient.get("quantity"));
                             groceryItem.put("unit", ingredient.get("unit"));
+                            groceryItem.put("type", ingredient.get("type"));
                             groceryItem.put("price", ingredient.get("price"));
                             groceryItem.put("category", recipe.get("category"));
                             groceryItem.put("isPurchased", false);

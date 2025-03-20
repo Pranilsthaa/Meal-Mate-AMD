@@ -51,8 +51,8 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private GroceryAdapter adapter;
-    private List<GroceryItem> allItems = new ArrayList<>();
-    private List<GroceryItem> filteredItems = new ArrayList<>();
+    private List<Object> allItems = new ArrayList<>();
+    private List<Object> filteredItems = new ArrayList<>();
     private double totalPrice = 0;
     private double remainingPrice = 0;
     private TextView progressText;
@@ -89,7 +89,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
             // Setup RecyclerView
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            adapter = new GroceryAdapter(filteredItems, this);
+            adapter = new GroceryAdapter(new ArrayList<>(), this);
             recyclerView.setAdapter(adapter);
 
             // Setup share button
@@ -160,7 +160,6 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             String userId = auth.getCurrentUser().getUid();
             System.out.println("Loading grocery items for user: " + userId);
 
-            // Get the grocery list data directly from groceryLists collection
             userGroceryRef.get().addOnSuccessListener(documentSnapshot -> {
                 try {
                     System.out.println("Document exists: " + documentSnapshot.exists());
@@ -171,12 +170,13 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                         return;
                     }
 
-                    // Log all fields in the document
                     Map<String, Object> data = documentSnapshot.getData();
                     System.out.println("Document data: " + data);
 
-                    List<GroceryItem> items = new ArrayList<>();
-                    
+                    // Create a map to store items by type
+                    Map<String, List<GroceryItem>> itemsByType = new HashMap<>();
+                    List<GroceryItem> uncategorizedItems = new ArrayList<>();
+
                     // Process each field in the document
                     for (Map.Entry<String, Object> entry : data.entrySet()) {
                         try {
@@ -197,31 +197,26 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                                 String name = (String) itemData.get("name");
                                 Double quantity = ((Number) itemData.get("quantity")).doubleValue();
                                 String unit = (String) itemData.get("unit");
-                                String category = (String) itemData.get("category");
+                                String type = (String) itemData.get("type");
                                 Double price = ((Number) itemData.get("price")).doubleValue();
                                 Boolean isPurchased = (Boolean) itemData.get("isPurchased");
                                 Boolean isSelectedForSms = (Boolean) itemData.get("isSelectedForSms");
 
-                                System.out.println("Parsed values - name: " + name + 
-                                    ", quantity: " + quantity + 
-                                    ", unit: " + unit + 
-                                    ", category: " + category + 
-                                    ", price: " + price +
-                                    ", isPurchased: " + isPurchased +
-                                    ", isSelectedForSms: " + isSelectedForSms);
-
                                 if (name != null && quantity != null && unit != null && price != null) {
-                                    GroceryItem item = new GroceryItem(fieldName, name, quantity, unit, category, price);
+                                    GroceryItem item = new GroceryItem(fieldName, name, quantity, unit, type, price);
                                     if (isPurchased != null) {
                                         item.setPurchased(isPurchased);
                                     }
                                     if (isSelectedForSms != null) {
                                         item.setSelectedForSms(isSelectedForSms);
                                     }
-                                    items.add(item);
-                                    System.out.println("Added item to list: " + item.getName());
-                                } else {
-                                    System.out.println("Skipping item due to missing required fields");
+
+                                    // Add item to appropriate list based on type
+                                    if (type != null && !type.isEmpty()) {
+                                        itemsByType.computeIfAbsent(type, k -> new ArrayList<>()).add(item);
+                                    } else {
+                                        uncategorizedItems.add(item);
+                                    }
                                 }
                             }
                         } catch (Exception e) {
@@ -230,20 +225,36 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                         }
                     }
 
-                    System.out.println("Total items processed: " + items.size());
+                    // Create a sorted list with headers and items
+                    List<Object> sortedList = new ArrayList<>();
+                    String[] types = getResources().getStringArray(R.array.ingredient_types);
+                    
+                    // Add categorized items
+                    for (String type : types) {
+                        List<GroceryItem> typeItems = itemsByType.get(type);
+                        if (typeItems != null && !typeItems.isEmpty()) {
+                            sortedList.add(type);
+                            sortedList.addAll(typeItems);
+                        }
+                    }
 
-                    // Update the items list
-                    allItems = items;
+                    // Add uncategorized items at the end
+                    if (!uncategorizedItems.isEmpty()) {
+                        sortedList.add("Others");
+                        sortedList.addAll(uncategorizedItems);
+                    }
+
+                    // Update the adapter with the new sorted list
+                    allItems = sortedList;
                     filteredItems.clear();
                     filteredItems.addAll(allItems);
-                    adapter.notifyDataSetChanged();
+                    adapter.updateData(filteredItems);
 
                     // Update totals
                     updateTotals();
 
                     // Update share button visibility
-                    boolean hasSelectedItems = filteredItems.stream().anyMatch(GroceryItem::isSelectedForSms);
-                    shareButton.setVisibility(hasSelectedItems ? View.VISIBLE : View.GONE);
+                    updateShareButtonVisibility();
 
                 } catch (Exception e) {
                     System.out.println("Error processing grocery list: " + e.getMessage());
@@ -275,32 +286,70 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             filteredItems.addAll(allItems);
         } else {
             filteredItems.clear();
-            filteredItems.addAll(allItems.stream()
-                    .filter(item -> item.getName().toLowerCase().contains(query.toLowerCase()))
-                    .collect(Collectors.toList()));
+            String lowerQuery = query.toLowerCase();
+            
+            // Keep track of the current section
+            String currentSection = null;
+            
+            // Iterate through all items
+            for (Object item : allItems) {
+                if (item instanceof String) {
+                    // This is a section header
+                    currentSection = (String) item;
+                } else if (item instanceof GroceryItem) {
+                    GroceryItem groceryItem = (GroceryItem) item;
+                    // If item matches the query, add its section header (if not already added) and the item
+                    if (groceryItem.getName().toLowerCase().contains(lowerQuery)) {
+                        if (currentSection != null && !filteredItems.contains(currentSection)) {
+                            filteredItems.add(currentSection);
+                        }
+                        filteredItems.add(groceryItem);
+                    }
+                }
+            }
         }
-        adapter.notifyDataSetChanged();
+        adapter.updateData(filteredItems);
         updateTotals();
     }
 
     private void updateTotals() {
         if (getView() == null) return;
 
-        totalPrice = allItems.stream()
-            .mapToDouble(GroceryItem::getPrice)
-            .sum();
+        double total = 0;
+        double remaining = 0;
+        int purchasedCount = 0;
+        int totalCount = 0;
 
-        remainingPrice = allItems.stream()
-            .filter(item -> !item.isPurchased())
-            .mapToDouble(GroceryItem::getPrice)
-            .sum();
+        for (Object item : allItems) {
+            if (item instanceof GroceryItem) {
+                GroceryItem groceryItem = (GroceryItem) item;
+                total += groceryItem.getPrice();
+                if (!groceryItem.isPurchased()) {
+                    remaining += groceryItem.getPrice();
+                } else {
+                    purchasedCount++;
+                }
+                totalCount++;
+            }
+        }
+
+        totalPrice = total;
+        remainingPrice = remaining;
 
         // Calculate progress as percentage of purchased items
-        double progress = totalPrice > 0 ? ((totalPrice - remainingPrice) / totalPrice) * 100 : 0;
+        double progress = totalCount > 0 ? (purchasedCount * 100.0 / totalCount) : 0;
         progressBar.setProgress((int) progress);
-        progressText.setText(String.format("%.1f%%", progress));
+        progressText.setText(String.format("%d/%d items", purchasedCount, totalCount));
         totalPriceText.setText(String.format("Total: Nrs %.0f", totalPrice));
         remainingPriceText.setText(String.format("Remaining: Nrs %.0f", remainingPrice));
+    }
+
+    private void updateShareButtonVisibility() {
+        boolean hasSelectedItems = filteredItems.stream()
+                .filter(item -> item instanceof GroceryItem)
+                .map(item -> (GroceryItem) item)
+                .anyMatch(GroceryItem::isSelectedForSms);
+        shareButton.setVisibility(hasSelectedItems ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -327,8 +376,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             .addOnSuccessListener(aVoid -> {
                 adapter.updateItem(item);
                 // Show/hide share button based on selection
-                boolean hasSelectedItems = filteredItems.stream().anyMatch(GroceryItem::isSelectedForSms);
-                shareButton.setVisibility(hasSelectedItems ? View.VISIBLE : View.GONE);
+                updateShareButtonVisibility();
                 ToastUtil.showSuccessToast(requireContext(), 
                     isSelected ? "Item selected for sharing" : "Item unselected for sharing");
             })
@@ -442,6 +490,8 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
     private List<GroceryItem> getSelectedItems() {
         return filteredItems.stream()
+                .filter(item -> item instanceof GroceryItem)
+                .map(item -> (GroceryItem) item)
                 .filter(GroceryItem::isSelectedForSms)
                 .collect(Collectors.toList());
     }

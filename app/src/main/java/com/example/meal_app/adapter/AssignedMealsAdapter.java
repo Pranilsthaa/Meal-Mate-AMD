@@ -70,7 +70,7 @@ public class AssignedMealsAdapter extends RecyclerView.Adapter<AssignedMealsAdap
 
         public void bind(Recipe recipe) {
             recipeName.setText(recipe.getName());
-            cookingTime.setText(recipe.getCookingTime() + " min");
+            cookingTime.setText(recipe.getCookTime() + " min");
             servings.setText(recipe.getServings() + " servings");
 
             if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {

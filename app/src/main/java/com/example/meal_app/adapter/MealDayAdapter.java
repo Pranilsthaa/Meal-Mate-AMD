@@ -106,7 +106,7 @@ public class MealDayAdapter extends RecyclerView.Adapter<MealDayAdapter.ViewHold
                     ImageButton removeButton = recipeView.findViewById(R.id.removeButton);
 
                     recipeName.setText(recipe.getName());
-                    cookingTime.setText(recipe.getCookingTime() + " min");
+                    cookingTime.setText(recipe.getCookTime() + " min");
                     servings.setText(recipe.getServings() + " servings");
 
                     if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {

@@ -134,14 +134,14 @@ public class MealsFragment extends Fragment {
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         Recipe recipe = new Recipe();
                         recipe.setId(document.getId());
-                        recipe.setName(document.getString("name"));
-                        recipe.setDescription(document.getString("description"));
-                        recipe.setImageUrl(document.getString("imageUrl"));
-                        recipe.setCategory(document.getString("category"));
-                        recipe.setCookingTime(document.getLong("cookingTime").intValue());
-                        recipe.setServings(document.getLong("servings").intValue());
-                        recipe.setTotalPrice(document.getDouble("totalPrice"));
-                        recipe.setUserId(document.getString("userId"));
+                        recipe.setName(document.getString("name") != null ? document.getString("name") : "");
+                        recipe.setDescription(document.getString("description") != null ? document.getString("description") : "");
+                        recipe.setImageUrl(document.getString("imageUrl") != null ? document.getString("imageUrl") : "");
+                        recipe.setCategory(document.getString("category") != null ? document.getString("category") : "");
+                        recipe.setCookTime(document.getLong("cookTime") != null ? document.getLong("cookTime").intValue() : 0);
+                        recipe.setServings(document.getLong("servings") != null ? document.getLong("servings").intValue() : 0);
+                        recipe.setTotalPrice(document.getDouble("totalPrice") != null ? document.getDouble("totalPrice") : 0.0);
+                        recipe.setUserId(document.getString("userId") != null ? document.getString("userId") : "");
                         recipes.add(recipe);
                     }
                     listener.onRecipesLoaded(recipes);
@@ -157,7 +157,7 @@ public class MealsFragment extends Fragment {
         binding.progressBar.setVisibility(View.VISIBLE);
         mealsRecyclerView.setVisibility(View.GONE);
 
-        db.collection("mealPlans")
+        db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
@@ -254,7 +254,7 @@ public class MealsFragment extends Fragment {
         String userId = auth.getCurrentUser().getUid();
         adapter.setDayLoading(day, true);
 
-        db.collection("mealPlans")
+        db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("day", day)
                 .get()
@@ -266,7 +266,7 @@ public class MealsFragment extends Fragment {
                         mealPlan.put("day", day);
                         mealPlan.put("recipeIds", Arrays.asList(recipeId));
 
-                        db.collection("mealPlans")
+                        db.collection("meal_plans")
                                 .add(mealPlan)
                                 .addOnSuccessListener(documentReference -> {
                                     loadMealPlan();
@@ -287,7 +287,7 @@ public class MealsFragment extends Fragment {
                         }
                         updatedRecipeIds.add(recipeId);
 
-                        db.collection("mealPlans")
+                        db.collection("meal_plans")
                                 .document(document.getId())
                                 .update("recipeIds", updatedRecipeIds)
                                 .addOnSuccessListener(aVoid -> {
@@ -322,7 +322,7 @@ public class MealsFragment extends Fragment {
         String userId = auth.getCurrentUser().getUid();
         String day = mealDay.getDay();
 
-        db.collection("mealPlans")
+        db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("day", day)
                 .get()
@@ -336,7 +336,7 @@ public class MealsFragment extends Fragment {
 
                             if (recipeIds.isEmpty()) {
                                 // If no recipes left, delete the document
-                                db.collection("mealPlans")
+                                db.collection("meal_plans")
                                         .document(document.getId())
                                         .delete()
                                         .addOnSuccessListener(aVoid -> loadMealPlan())
@@ -344,7 +344,7 @@ public class MealsFragment extends Fragment {
                                                 e -> handleError("Error deleting meal plan: " + e.getMessage()));
                             } else {
                                 // Update with remaining recipes
-                                db.collection("mealPlans")
+                                db.collection("meal_plans")
                                         .document(document.getId())
                                         .update("recipeIds", recipeIds)
                                         .addOnSuccessListener(aVoid -> loadMealPlan())
@@ -427,7 +427,7 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
 
         public void bind(Recipe recipe) {
             recipeName.setText(recipe.getName());
-            cookingTime.setText(recipe.getCookingTime() + " min");
+            cookingTime.setText(recipe.getCookTime() + " min");
             servings.setText(recipe.getServings() + " servings");
             recipeCategory.setText(recipe.getCategory());
 
@@ -504,7 +504,7 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
         public void bind(Map<String, Object> recipe) {
             try {
                 String name = (String) recipe.get("name");
-                Long cookingTimeValue = (Long) recipe.get("cookingTime");
+                Long cookingTimeValue = (Long) recipe.get("cookTime");
                 Long servingsValue = (Long) recipe.get("servings");
                 String category = (String) recipe.get("category");
                 String imageUrl = (String) recipe.get("imageUrl");

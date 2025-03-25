@@ -13,6 +13,9 @@
         <action
             android:id="@+id/action_navigation_home_to_addRecipeFragment"
             app:destination="@id/navigation_add_recipe" />
+        <action
+            android:id="@+id/action_navigation_home_to_recipeDetailsFragment"
+            app:destination="@id/navigation_recipe_details" />
     </fragment>
 
     <fragment

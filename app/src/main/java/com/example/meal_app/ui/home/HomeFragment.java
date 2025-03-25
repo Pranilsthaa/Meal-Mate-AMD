@@ -25,10 +25,15 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.SetOptions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClickListener {
 
@@ -39,12 +44,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private List<Recipe> recipes;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private RecyclerView breakfastRecyclerView;
-    private RecyclerView lunchRecyclerView;
-    private RecyclerView dinnerRecyclerView;
-    private RecipeAdapter breakfastAdapter;
-    private RecipeAdapter lunchAdapter;
-    private RecipeAdapter dinnerAdapter;
+    private RecyclerView todayMealsRecyclerView;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -68,13 +68,11 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
             // Initialize views
             recipeRecyclerView = binding.recipeRecyclerView;
             showMoreButton = binding.showMoreButton;
-            breakfastRecyclerView = binding.breakfastRecyclerView;
-            lunchRecyclerView = binding.lunchRecyclerView;
-            dinnerRecyclerView = binding.dinnerRecyclerView;
+            todayMealsRecyclerView = binding.todayMealsRecyclerView;
 
             // Setup RecyclerViews
             setupRecyclerViews();
-            loadTodaysMealPlan();
+            setupTodayMealPlan();
 
             // Setup show more button
             if (showMoreButton != null) {
@@ -122,23 +120,9 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 recipeRecyclerView.setAdapter(recipeAdapter);
             }
 
-            // Setup meal plan RecyclerViews
-            if (breakfastRecyclerView != null) {
-                breakfastRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-                breakfastAdapter = new RecipeAdapter(new ArrayList<>(), this);
-                breakfastRecyclerView.setAdapter(breakfastAdapter);
-            }
-
-            if (lunchRecyclerView != null) {
-                lunchRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-                lunchAdapter = new RecipeAdapter(new ArrayList<>(), this);
-                lunchRecyclerView.setAdapter(lunchAdapter);
-            }
-
-            if (dinnerRecyclerView != null) {
-                dinnerRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-                dinnerAdapter = new RecipeAdapter(new ArrayList<>(), this);
-                dinnerRecyclerView.setAdapter(dinnerAdapter);
+            // Setup today's meals RecyclerView
+            if (todayMealsRecyclerView != null) {
+                todayMealsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -148,146 +132,166 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         }
     }
 
-    private void loadTodaysMealPlan() {
-        String userId = auth.getCurrentUser().getUid();
-        String today = getCurrentDay();
+    private void setupTodayMealPlan() {
+        // Get today's day name
+        Calendar calendar = Calendar.getInstance();
+        String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+        String today = days[calendar.get(Calendar.DAY_OF_WEEK) - 1];
 
+        // Query meal plan for today
+        String userId = auth.getCurrentUser().getUid();
         db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("day", today)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
-                        DocumentSnapshot document = queryDocumentSnapshots.getDocuments().get(0);
-                        List<String> recipeIds = (List<String>) document.get("recipeIds");
-
+                        DocumentSnapshot mealPlan = queryDocumentSnapshots.getDocuments().get(0);
+                        List<String> recipeIds = (List<String>) mealPlan.get("recipeIds");
                         if (recipeIds != null && !recipeIds.isEmpty()) {
-                            loadRecipesForMealPlan(recipeIds);
-                        } else {
-                            // No recipes for today
-                            clearMealPlanViews();
+                            loadTodayRecipes(recipeIds);
                         }
-                    } else {
-                        // No meal plan for today
-                        clearMealPlanViews();
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    if (getView() != null) {
-                        Snackbar.make(getView(), "Error loading today's meal plan: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
     }
 
-    private void loadRecipesForMealPlan(List<String> recipeIds) {
-        if (recipeIds == null || recipeIds.isEmpty()) {
-            clearMealPlanViews();
-            return;
-        }
+    private void loadTodayRecipes(List<String> recipeIds) {
+        List<Recipe> todayRecipes = new ArrayList<>();
+        AtomicInteger loadedCount = new AtomicInteger(0);
 
-        db.collection("recipes")
-                .whereIn("id", recipeIds)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Recipe> breakfastRecipes = new ArrayList<>();
-                    List<Recipe> lunchRecipes = new ArrayList<>();
-                    List<Recipe> dinnerRecipes = new ArrayList<>();
+        for (String recipeId : recipeIds) {
+            db.collection("recipes").document(recipeId).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            try {
+                                Recipe recipe = new Recipe();
+                                recipe.setId(documentSnapshot.getId());
+                                recipe.setName(documentSnapshot.getString("name"));
+                                recipe.setDescription(documentSnapshot.getString("description"));
+                                recipe.setImageUrl(documentSnapshot.getString("imageUrl"));
+                                recipe.setCategory(documentSnapshot.getString("category"));
+                                
+                                // Handle numeric values
+                                Long cookTime = documentSnapshot.getLong("cookTime");
+                                recipe.setCookTime(cookTime != null ? cookTime.intValue() : 0);
+                                
+                                Long servings = documentSnapshot.getLong("servings");
+                                recipe.setServings(servings != null ? servings.intValue() : 0);
+                                
+                                Double calories = documentSnapshot.getDouble("calories");
+                                recipe.setCalories(calories != null ? calories : 0.0);
+                                
+                                Double totalPrice = documentSnapshot.getDouble("totalPrice");
+                                recipe.setTotalPrice(totalPrice != null ? totalPrice : 0.0);
 
-                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                        Recipe recipe = new Recipe();
-                        recipe.setId(document.getId());
-                        recipe.setName(document.getString("name") != null ? document.getString("name") : "");
-                        recipe.setDescription(document.getString("description") != null ? document.getString("description") : "");
-                        recipe.setImageUrl(document.getString("imageUrl") != null ? document.getString("imageUrl") : "");
-                        recipe.setCategory(document.getString("category") != null ? document.getString("category") : "");
-                        recipe.setCookTime(document.getLong("cookTime") != null ? document.getLong("cookTime").intValue() : 0);
-                        recipe.setServings(document.getLong("servings") != null ? document.getLong("servings").intValue() : 0);
-                        recipe.setCalories(document.getDouble("calories") != null ? document.getDouble("calories") : 0.0);
-                        recipe.setTotalPrice(document.getDouble("totalPrice") != null ? document.getDouble("totalPrice") : 0.0);
-                        recipe.setUserId(document.getString("userId") != null ? document.getString("userId") : "");
+                                // Convert Lists to arrays for ingredients and instructions
+                                List<String> ingredientsList = (List<String>) documentSnapshot.get("ingredients");
+                                if (ingredientsList != null) {
+                                    recipe.setIngredients(ingredientsList.toArray(new String[0]));
+                                } else {
+                                    recipe.setIngredients(new String[0]);
+                                }
 
-                        // Handle arrays
-                        List<String> ingredientsList = (List<String>) document.get("ingredients");
-                        List<String> instructionsList = (List<String>) document.get("instructions");
-                        
-                        recipe.setIngredients(ingredientsList != null ? ingredientsList.toArray(new String[0]) : new String[0]);
-                        recipe.setInstructions(instructionsList != null ? instructionsList.toArray(new String[0]) : new String[0]);
+                                List<String> instructionsList = (List<String>) documentSnapshot.get("instructions");
+                                if (instructionsList != null) {
+                                    recipe.setInstructions(instructionsList.toArray(new String[0]));
+                                } else {
+                                    recipe.setInstructions(new String[0]);
+                                }
 
-                        String category = recipe.getCategory().toLowerCase();
-                        if (category.contains("breakfast")) {
-                            breakfastRecipes.add(recipe);
-                        } else if (category.contains("lunch")) {
-                            lunchRecipes.add(recipe);
-                        } else if (category.contains("dinner")) {
-                            dinnerRecipes.add(recipe);
+                                todayRecipes.add(recipe);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                if (getView() != null) {
+                                    Snackbar.make(getView(), "Error loading recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                                }
+                            }
                         }
-                    }
+                        if (loadedCount.incrementAndGet() == recipeIds.size()) {
+                            // All recipes loaded, setup adapter
+                            RecipeAdapter todayAdapter = new RecipeAdapter(todayRecipes, new RecipeAdapter.OnRecipeClickListener() {
+                                @Override
+                                public void onAddToPlanClick(Recipe recipe) {
+                                    // Do nothing as the button will be hidden
+                                }
 
-                    updateMealPlanViews(breakfastRecipes, lunchRecipes, dinnerRecipes);
-                })
-                .addOnFailureListener(e -> {
-                    if (getView() != null) {
-                        Snackbar.make(getView(), "Error loading recipes: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-                    }
-                });
-    }
-
-    private void updateMealPlanViews(List<Recipe> breakfastRecipes, List<Recipe> lunchRecipes, List<Recipe> dinnerRecipes) {
-        if (breakfastAdapter != null) {
-            breakfastAdapter.updateData(breakfastRecipes);
+                                @Override
+                                public void onRecipeClick(Recipe recipe) {
+                                    Bundle bundle = new Bundle();
+                                    bundle.putString("recipeId", recipe.getId());
+                                    bundle.putBoolean("fromMeals", true);
+                                    Navigation.findNavController(requireView())
+                                            .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
+                                }
+                            }, true); // Pass true to indicate this is for Today's Meal Plan
+                            todayMealsRecyclerView.setAdapter(todayAdapter);
+                        }
+                    });
         }
-        if (lunchAdapter != null) {
-            lunchAdapter.updateData(lunchRecipes);
-        }
-        if (dinnerAdapter != null) {
-            dinnerAdapter.updateData(dinnerRecipes);
-        }
-
-        // Show/hide sections based on content
-        if (binding.breakfastSection != null) {
-            binding.breakfastSection.setVisibility(breakfastRecipes.isEmpty() ? View.GONE : View.VISIBLE);
-        }
-        if (binding.lunchSection != null) {
-            binding.lunchSection.setVisibility(lunchRecipes.isEmpty() ? View.GONE : View.VISIBLE);
-        }
-        if (binding.dinnerSection != null) {
-            binding.dinnerSection.setVisibility(dinnerRecipes.isEmpty() ? View.GONE : View.VISIBLE);
-        }
-    }
-
-    private void clearMealPlanViews() {
-        if (breakfastAdapter != null) {
-            breakfastAdapter.updateData(new ArrayList<>());
-        }
-        if (lunchAdapter != null) {
-            lunchAdapter.updateData(new ArrayList<>());
-        }
-        if (dinnerAdapter != null) {
-            dinnerAdapter.updateData(new ArrayList<>());
-        }
-
-        // Hide all sections
-        if (binding.breakfastSection != null) {
-            binding.breakfastSection.setVisibility(View.GONE);
-        }
-        if (binding.lunchSection != null) {
-            binding.lunchSection.setVisibility(View.GONE);
-        }
-        if (binding.dinnerSection != null) {
-            binding.dinnerSection.setVisibility(View.GONE);
-        }
-    }
-
-    private String getCurrentDay() {
-        Calendar calendar = Calendar.getInstance();
-        int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
-        String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-        return days[dayOfWeek - 1];
     }
 
     @Override
     public void onAddToPlanClick(Recipe recipe) {
         showDaySelectionDialog(recipe);
+    }
+
+    @Override
+    public void onRecipeClick(Recipe recipe) {
+        String userId = auth.getCurrentUser().getUid();
+        
+        // First save the recipe to Firestore if it doesn't exist
+        db.collection("recipes")
+                .document(recipe.getId())
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (!documentSnapshot.exists()) {
+                        // Convert arrays to Lists for Firestore
+                        List<String> ingredientsList = Arrays.asList(recipe.getIngredients());
+                        List<String> instructionsList = Arrays.asList(recipe.getInstructions());
+                        
+                        // Save the recipe to Firestore
+                        Map<String, Object> recipeData = new HashMap<>();
+                        recipeData.put("id", recipe.getId());
+                        recipeData.put("name", recipe.getName());
+                        recipeData.put("description", recipe.getDescription());
+                        recipeData.put("imageUrl", recipe.getImageUrl());
+                        recipeData.put("cookTime", recipe.getCookTime());
+                        recipeData.put("servings", recipe.getServings());
+                        recipeData.put("ingredients", ingredientsList);
+                        recipeData.put("instructions", instructionsList);
+                        recipeData.put("category", recipe.getCategory());
+                        recipeData.put("calories", recipe.getCalories());
+                        recipeData.put("totalPrice", recipe.getTotalPrice());
+                        recipeData.put("userId", userId);
+
+                        db.collection("recipes")
+                                .document(recipe.getId())
+                                .set(recipeData)
+                                .addOnSuccessListener(aVoid -> {
+                                    navigateToRecipeDetails(recipe.getId());
+                                })
+                                .addOnFailureListener(e -> {
+                                    if (getView() != null) {
+                                        Snackbar.make(getView(), "Error saving recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                                    }
+                                });
+                    } else {
+                        navigateToRecipeDetails(recipe.getId());
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (getView() != null) {
+                        Snackbar.make(getView(), "Error checking recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    private void navigateToRecipeDetails(String recipeId) {
+        Bundle bundle = new Bundle();
+        bundle.putString("recipeId", recipeId);
+        bundle.putBoolean("fromMeals", false);
+        Navigation.findNavController(requireView())
+                .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
     }
 
     private void showDaySelectionDialog(Recipe recipe) {
@@ -395,7 +399,8 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 .addOnSuccessListener(aVoid -> {
                                     if (getView() != null) {
                                         Snackbar.make(getView(), "Added recipe to " + day, Snackbar.LENGTH_SHORT).show();
-                                        loadTodaysMealPlan(); // Reload today's meal plan
+                                        setupTodayMealPlan(); // Reload today's meal plan
+                                        addIngredientsToGroceryList(recipeId, userId); // Add ingredients to grocery list
                                     }
                                 })
                                 .addOnFailureListener(e -> {
@@ -415,7 +420,8 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 .addOnSuccessListener(documentReference -> {
                                     if (getView() != null) {
                                         Snackbar.make(getView(), "Added recipe to " + day, Snackbar.LENGTH_SHORT).show();
-                                        loadTodaysMealPlan(); // Reload today's meal plan
+                                        setupTodayMealPlan(); // Reload today's meal plan
+                                        addIngredientsToGroceryList(recipeId, userId); // Add ingredients to grocery list
                                     }
                                 })
                                 .addOnFailureListener(e -> {
@@ -428,6 +434,101 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 .addOnFailureListener(e -> {
                     if (getView() != null) {
                         Snackbar.make(getView(), "Error checking meal plan: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    private String determineIngredientType(String ingredient) {
+        // Common ingredient categories
+        ingredient = ingredient.toLowerCase();
+        
+        if (ingredient.contains("meat") || ingredient.contains("chicken") || 
+            ingredient.contains("beef") || ingredient.contains("pork") || 
+            ingredient.contains("fish") || ingredient.contains("lamb")) {
+            return "Meat & Fish";
+        } else if (ingredient.contains("milk") || ingredient.contains("cheese") || 
+                   ingredient.contains("yogurt") || ingredient.contains("cream") ||
+                   ingredient.contains("butter")) {
+            return "Dairy";
+        } else if (ingredient.contains("apple") || ingredient.contains("banana") || 
+                   ingredient.contains("orange") || ingredient.contains("berry") ||
+                   ingredient.contains("fruit")) {
+            return "Fruits";
+        } else if (ingredient.contains("carrot") || ingredient.contains("potato") || 
+                   ingredient.contains("onion") || ingredient.contains("tomato") ||
+                   ingredient.contains("vegetable")) {
+            return "Vegetables";
+        } else if (ingredient.contains("rice") || ingredient.contains("pasta") || 
+                   ingredient.contains("flour") || ingredient.contains("bread") ||
+                   ingredient.contains("cereal")) {
+            return "Grains & Pasta";
+        } else if (ingredient.contains("oil") || ingredient.contains("sauce") || 
+                   ingredient.contains("vinegar") || ingredient.contains("spice") ||
+                   ingredient.contains("herb")) {
+            return "Condiments & Spices";
+        }
+        
+        return "Other";
+    }
+
+    private void addIngredientsToGroceryList(String recipeId, String userId) {
+        // Get recipe ingredients
+        db.collection("recipes").document(recipeId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
+                        if (ingredients != null && !ingredients.isEmpty()) {
+                            // Reference to user's grocery list document
+                            DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
+
+                            // Create a map to store all ingredient updates
+                            Map<String, Object> updates = new HashMap<>();
+                            
+                            // Process each ingredient
+                            for (String ingredient : ingredients) {
+                                // Create a unique ID for the ingredient to avoid duplicates
+                                String ingredientId = ingredient.toLowerCase().replace(" ", "_");
+                                
+                                // Create ingredient data
+                                Map<String, Object> ingredientData = new HashMap<>();
+                                ingredientData.put("name", ingredient);
+                                ingredientData.put("category", "Dinner"); // Default category, adjust as needed
+                                ingredientData.put("isPurchased", false);
+                                ingredientData.put("isSelectedForSms", false);
+                                ingredientData.put("price", 200.0); // Default price, adjust as needed
+                                ingredientData.put("quantity", 2.0); // Default quantity, adjust as needed
+                                ingredientData.put("type", determineIngredientType(ingredient));
+                                ingredientData.put("unit", "g");
+                                ingredientData.put("userId", userId);
+                                
+                                // Add to updates map
+                                updates.put(ingredientId, ingredientData);
+                            }
+
+                            // Update the grocery list document with all ingredients at once
+                            groceryListRef.set(updates, SetOptions.merge())
+                                .addOnSuccessListener(aVoid -> {
+                                    if (getView() != null) {
+                                        Snackbar.make(getView(), 
+                                            "Added ingredients to grocery list", 
+                                            Snackbar.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    if (getView() != null) {
+                                        Snackbar.make(getView(), 
+                                            "Error updating grocery list: " + e.getMessage(), 
+                                            Snackbar.LENGTH_LONG).show();
+                                    }
+                                });
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (getView() != null) {
+                        Snackbar.make(getView(), 
+                            "Error getting recipe ingredients: " + e.getMessage(), 
+                            Snackbar.LENGTH_LONG).show();
                     }
                 });
     }

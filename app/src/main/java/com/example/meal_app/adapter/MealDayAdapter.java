@@ -64,12 +64,14 @@ public class MealDayAdapter extends RecyclerView.Adapter<MealDayAdapter.ViewHold
     class ViewHolder extends RecyclerView.ViewHolder {
         private final TextView dayText;
         private final ViewGroup mealsContainer;
+        private final View loadingOverlay;
         private final ProgressBar progressBar;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             dayText = itemView.findViewById(R.id.dayText);
             mealsContainer = itemView.findViewById(R.id.mealsContainer);
+            loadingOverlay = itemView.findViewById(R.id.loadingOverlay);
             progressBar = itemView.findViewById(R.id.progressBar);
         }
 
@@ -79,8 +81,8 @@ public class MealDayAdapter extends RecyclerView.Adapter<MealDayAdapter.ViewHold
 
             // Show/hide loading state
             boolean isLoading = loadingStates.containsKey(mealDay.getDay()) && loadingStates.get(mealDay.getDay());
-            progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-            mealsContainer.setVisibility(isLoading ? View.GONE : View.VISIBLE);
+            loadingOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            mealsContainer.setAlpha(isLoading ? 0.5f : 1.0f);
 
             if (isLoading) {
                 return;

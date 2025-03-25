@@ -19,14 +19,21 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
     private OnRecipeClickListener listener;
     private static final int ITEMS_PER_PAGE = 5;
     private int currentPage = 1;
+    private boolean isMealPlanAdapter;
 
     public interface OnRecipeClickListener {
         void onAddToPlanClick(Recipe recipe);
+        void onRecipeClick(Recipe recipe);
     }
 
     public RecipeAdapter(List<Recipe> recipes, OnRecipeClickListener listener) {
+        this(recipes, listener, false);
+    }
+
+    public RecipeAdapter(List<Recipe> recipes, OnRecipeClickListener listener, boolean isMealPlanAdapter) {
         this.recipes = recipes;
         this.listener = listener;
+        this.isMealPlanAdapter = isMealPlanAdapter;
     }
 
     @NonNull
@@ -54,9 +61,22 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
             .error(R.drawable.placeholder_recipe)
             .into(holder.recipeImage);
             
-        holder.addToPlanButton.setOnClickListener(v -> {
+        // Hide Add to Plan button for meal plan items
+        if (isMealPlanAdapter) {
+            holder.addToPlanButton.setVisibility(View.GONE);
+        } else {
+            holder.addToPlanButton.setVisibility(View.VISIBLE);
+            holder.addToPlanButton.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onAddToPlanClick(recipe);
+                }
+            });
+        }
+
+        // Add click listener for the entire item
+        holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
-                listener.onAddToPlanClick(recipe);
+                listener.onRecipeClick(recipe);
             }
         });
     }

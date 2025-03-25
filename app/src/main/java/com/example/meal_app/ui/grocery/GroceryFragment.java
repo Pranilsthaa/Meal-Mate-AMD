@@ -149,7 +149,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void loadGroceryItems() {
-        if (auth.getCurrentUser() == null || userGroceryRef == null) {
+        if (auth.getCurrentUser() == null) {
             if (getView() != null) {
                 ToastUtil.showErrorToast(requireContext(), "Please log in to view your grocery list");
             }
@@ -160,122 +160,119 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             String userId = auth.getCurrentUser().getUid();
             System.out.println("Loading grocery items for user: " + userId);
 
-            userGroceryRef.get().addOnSuccessListener(documentSnapshot -> {
-                try {
-                    System.out.println("Document exists: " + documentSnapshot.exists());
-                    if (!documentSnapshot.exists()) {
-                        if (getView() != null) {
-                            ToastUtil.showErrorToast(requireContext(), "No grocery list found for this user");
-                        }
-                        return;
-                    }
-
-                    Map<String, Object> data = documentSnapshot.getData();
-                    System.out.println("Document data: " + data);
-
-                    // Create a map to store items by type
-                    Map<String, List<GroceryItem>> itemsByType = new HashMap<>();
-                    List<GroceryItem> uncategorizedItems = new ArrayList<>();
-
-                    // Process each field in the document
-                    for (Map.Entry<String, Object> entry : data.entrySet()) {
-                        try {
-                            String fieldName = entry.getKey();
-                            Object value = entry.getValue();
-                            
-                            // Skip non-item fields
-                            if (fieldName.equals("groceryState")) {
-                                continue;
+            // Query all fields from the document
+            db.collection("groceryLists")
+                .document(userId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    try {
+                        if (!documentSnapshot.exists()) {
+                            if (getView() != null) {
+                                ToastUtil.showErrorToast(requireContext(), "No grocery list found for this user");
                             }
+                            return;
+                        }
 
-                            // Each item is stored as a map
-                            if (value instanceof Map) {
-                                Map<String, Object> itemData = (Map<String, Object>) value;
-                                System.out.println("Processing item: " + fieldName);
-                                System.out.println("Item data: " + itemData);
+                        Map<String, Object> data = documentSnapshot.getData();
+                        if (data == null) {
+                            System.out.println("No data found in document");
+                            return;
+                        }
+                        System.out.println("Document data: " + data);
 
-                                String name = (String) itemData.get("name");
-                                Double quantity = ((Number) itemData.get("quantity")).doubleValue();
-                                String unit = (String) itemData.get("unit");
-                                String type = (String) itemData.get("type");
-                                Double price = ((Number) itemData.get("price")).doubleValue();
-                                Boolean isPurchased = (Boolean) itemData.get("isPurchased");
-                                Boolean isSelectedForSms = (Boolean) itemData.get("isSelectedForSms");
+                        // Create a map to store items by type
+                        Map<String, List<GroceryItem>> itemsByType = new HashMap<>();
+                        List<GroceryItem> uncategorizedItems = new ArrayList<>();
 
-                                if (name != null && quantity != null && unit != null && price != null) {
-                                    GroceryItem item = new GroceryItem(fieldName, name, quantity, unit, type, price);
-                                    if (isPurchased != null) {
-                                        item.setPurchased(isPurchased);
-                                    }
-                                    if (isSelectedForSms != null) {
-                                        item.setSelectedForSms(isSelectedForSms);
-                                    }
+                        // Process each field in the document
+                        for (Map.Entry<String, Object> entry : data.entrySet()) {
+                            try {
+                                String fieldName = entry.getKey();
+                                Object value = entry.getValue();
+                                
+                                // Skip metadata fields
+                                if (fieldName.equals("userId") || fieldName.equals("lastUpdated")) {
+                                    continue;
+                                }
 
-                                    // Add item to appropriate list based on type
-                                    if (type != null && !type.isEmpty()) {
-                                        itemsByType.computeIfAbsent(type, k -> new ArrayList<>()).add(item);
+                                // Each item is stored as a map
+                                if (value instanceof Map) {
+                                    Map<String, Object> itemData = (Map<String, Object>) value;
+                                    System.out.println("Processing item: " + fieldName);
+                                    System.out.println("Item data: " + itemData);
+
+                                    // Create GroceryItem object
+                                    GroceryItem item = new GroceryItem();
+                                    item.setId(fieldName);
+                                    item.setName((String) itemData.get("name"));
+                                    item.setQuantity(((Number) itemData.get("quantity")).doubleValue());
+                                    item.setUnit((String) itemData.get("unit"));
+                                    item.setCategory((String) itemData.get("type"));
+                                    item.setPrice(((Number) itemData.get("price")).doubleValue());
+                                    item.setPurchased((Boolean) itemData.get("isPurchased"));
+                                    item.setSelectedForSms((Boolean) itemData.get("isSelectedForSms"));
+
+                                    // Add to appropriate list based on category
+                                    String category = item.getCategory();
+                                    if (category != null && !category.isEmpty()) {
+                                        itemsByType.computeIfAbsent(category, k -> new ArrayList<>()).add(item);
                                     } else {
                                         uncategorizedItems.add(item);
                                     }
                                 }
+                            } catch (Exception e) {
+                                System.out.println("Error processing item: " + e.getMessage());
+                                e.printStackTrace();
                             }
-                        } catch (Exception e) {
-                            System.out.println("Error processing item: " + e.getMessage());
-                            e.printStackTrace();
+                        }
+
+                        // Convert the categorized items into a flat list with headers
+                        List<Object> items = new ArrayList<>();
+                        
+                        // Add items by type
+                        for (Map.Entry<String, List<GroceryItem>> entry : itemsByType.entrySet()) {
+                            if (!entry.getValue().isEmpty()) {
+                                items.add(entry.getKey()); // Add type as header
+                                items.addAll(entry.getValue()); // Add items of this type
+                            }
+                        }
+
+                        // Add uncategorized items at the end if any
+                        if (!uncategorizedItems.isEmpty()) {
+                            items.add("Other");
+                            items.addAll(uncategorizedItems);
+                        }
+
+                        // Update the adapter with all items
+                        allItems = items;
+                        filteredItems = new ArrayList<>(items);
+                        adapter.updateData(filteredItems);
+
+                        // Update total price and progress
+                        updateTotalPrice();
+                        updateProgress();
+
+                    } catch (Exception e) {
+                        System.out.println("Error processing document: " + e.getMessage());
+                        e.printStackTrace();
+                        if (getView() != null) {
+                            ToastUtil.showErrorToast(requireContext(), "Error loading grocery items: " + e.getMessage());
                         }
                     }
-
-                    // Create a sorted list with headers and items
-                    List<Object> sortedList = new ArrayList<>();
-                    String[] types = getResources().getStringArray(R.array.ingredient_types);
-                    
-                    // Add categorized items
-                    for (String type : types) {
-                        List<GroceryItem> typeItems = itemsByType.get(type);
-                        if (typeItems != null && !typeItems.isEmpty()) {
-                            sortedList.add(type);
-                            sortedList.addAll(typeItems);
-                        }
-                    }
-
-                    // Add uncategorized items at the end
-                    if (!uncategorizedItems.isEmpty()) {
-                        sortedList.add("Others");
-                        sortedList.addAll(uncategorizedItems);
-                    }
-
-                    // Update the adapter with the new sorted list
-                    allItems = sortedList;
-                    filteredItems.clear();
-                    filteredItems.addAll(allItems);
-                    adapter.updateData(filteredItems);
-
-                    // Update totals
-                    updateTotals();
-
-                    // Update share button visibility
-                    updateShareButtonVisibility();
-
-                } catch (Exception e) {
-                    System.out.println("Error processing grocery list: " + e.getMessage());
+                })
+                .addOnFailureListener(e -> {
+                    System.out.println("Error getting document: " + e.getMessage());
                     e.printStackTrace();
                     if (getView() != null) {
-                        ToastUtil.showErrorToast(requireContext(), "Error processing grocery list: " + e.getMessage());
+                        ToastUtil.showErrorToast(requireContext(), "Error loading grocery list: " + e.getMessage());
                     }
-                }
-            })
-            .addOnFailureListener(e -> {
-                System.out.println("Error loading grocery list: " + e.getMessage());
-                e.printStackTrace();
-                if (getView() != null) {
-                    ToastUtil.showErrorToast(requireContext(), "Error loading grocery list: " + e.getMessage());
-                }
-            });
+                });
+
         } catch (Exception e) {
-            System.out.println("Error initializing grocery list: " + e.getMessage());
+            System.out.println("Error in loadGroceryItems: " + e.getMessage());
             e.printStackTrace();
             if (getView() != null) {
-                ToastUtil.showErrorToast(requireContext(), "Error initializing grocery list: " + e.getMessage());
+                ToastUtil.showErrorToast(requireContext(), "Error loading grocery items: " + e.getMessage());
             }
         }
     }
@@ -596,5 +593,50 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
+    }
+
+    private void updateTotalPrice() {
+        if (getView() == null) return;
+
+        double total = 0;
+        double remaining = 0;
+
+        for (Object item : allItems) {
+            if (item instanceof GroceryItem) {
+                GroceryItem groceryItem = (GroceryItem) item;
+                total += groceryItem.getPrice();
+                if (!groceryItem.isPurchased()) {
+                    remaining += groceryItem.getPrice();
+                }
+            }
+        }
+
+        totalPrice = total;
+        remainingPrice = remaining;
+
+        totalPriceText.setText(String.format("Total: Nrs %.0f", totalPrice));
+        remainingPriceText.setText(String.format("Remaining: Nrs %.0f", remainingPrice));
+    }
+
+    private void updateProgress() {
+        if (getView() == null) return;
+
+        int purchasedCount = 0;
+        int totalCount = 0;
+
+        for (Object item : allItems) {
+            if (item instanceof GroceryItem) {
+                GroceryItem groceryItem = (GroceryItem) item;
+                if (groceryItem.isPurchased()) {
+                    purchasedCount++;
+                }
+                totalCount++;
+            }
+        }
+
+        // Calculate progress as percentage of purchased items
+        double progress = totalCount > 0 ? (purchasedCount * 100.0 / totalCount) : 0;
+        progressBar.setProgress((int) progress);
+        progressText.setText(String.format("%d/%d items", purchasedCount, totalCount));
     }
 }

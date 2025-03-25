@@ -2,6 +2,7 @@ package com.example.meal_app.ui.recipe;
 
 import android.app.Dialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,9 +46,8 @@ public class RecipeDetailsFragment extends Fragment {
 
             // Hide "Add to Meal Plan" button if coming from meals screen
             Button addToMealPlanButton = root.findViewById(R.id.addToMealPlanButton);
-            if (isFromMeals) {
+            
                 addToMealPlanButton.setVisibility(View.GONE);
-            }
         }
 
         // Setup back button
@@ -84,60 +84,92 @@ public class RecipeDetailsFragment extends Fragment {
             return;
         }
 
-        // Update recipe image
-        ImageView recipeImage = root.findViewById(R.id.recipeImage);
-        String imageUrl = document.getString("imageUrl");
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            Glide.with(this)
-                    .load(imageUrl)
-                    .centerCrop()
-                    .into(recipeImage);
-        }
+        try {
+            // Update recipe image
+            ImageView recipeImage = root.findViewById(R.id.recipeImage);
+            String imageUrl = document.getString("imageUrl");
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                Glide.with(this)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.placeholder_recipe)
+                        .error(R.drawable.placeholder_recipe)
+                        .centerCrop()
+                        .into(recipeImage);
+            } else {
+                recipeImage.setImageResource(R.drawable.placeholder_recipe);
+            }
 
-        // Update basic info
-        TextView nameText = root.findViewById(R.id.recipeName);
-        TextView descriptionText = root.findViewById(R.id.recipeDescription);
-        TextView categoryText = root.findViewById(R.id.recipeCategory);
-        TextView cookingTimeText = root.findViewById(R.id.cookingTime);
-        TextView servingsText = root.findViewById(R.id.servings);
-        TextView totalPriceText = root.findViewById(R.id.totalPrice);
+            // Update basic info with null checks
+            TextView nameText = root.findViewById(R.id.recipeName);
+            TextView descriptionText = root.findViewById(R.id.recipeDescription);
+            TextView categoryText = root.findViewById(R.id.recipeCategory);
+            TextView cookingTimeText = root.findViewById(R.id.cookingTime);
+            TextView servingsText = root.findViewById(R.id.servings);
+            TextView totalPriceText = root.findViewById(R.id.totalPrice);
 
-        nameText.setText(document.getString("name"));
-        descriptionText.setText(document.getString("description"));
-        categoryText.setText(document.getString("category"));
+            // Safely set text with null checks
+            nameText.setText(document.getString("name") != null ? document.getString("name") : "N/A");
+            descriptionText.setText(document.getString("description") != null ? document.getString("description") : "No description available");
+            categoryText.setText(document.getString("category") != null ? document.getString("category") : "Uncategorized");
 
-        // Format cooking time
-        Long cookingTime = document.getLong("cookingTime");
-        if (cookingTime != null) {
-            cookingTimeText.setText(cookingTime + " min");
-        }
+            // Handle numeric values safely
+            Long cookingTime = document.getLong("cookTime");
+            if (cookingTime != null) {
+                cookingTimeText.setText(cookingTime + " min");
+            } else {
+                cookingTimeText.setText("N/A");
+                handleError("cookTime is null or invalid");
+            }
 
-        // Format servings
-        Long servings = document.getLong("servings");
-        if (servings != null) {
-            servingsText.setText(servings + " servings");
-        }
+            Long servings = document.getLong("servings");
+            if (servings != null) {
+                servingsText.setText(servings + " servings");
+            } else {
+                servingsText.setText("N/A");
+                handleError("servings is null or invalid");
+            }
 
-        // Format price in NRS
-        Double totalPrice = document.getDouble("totalPrice");
-        if (totalPrice != null) {
-            totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
-        }
+            Double totalPrice = document.getDouble("totalPrice");
+            if (totalPrice != null) {
+                totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
+            } else {
+                totalPriceText.setText("N/A");
+                handleError("totalPrice is null or invalid");
+            }
 
-        // Setup ingredients list
-        RecyclerView ingredientsRecyclerView = root.findViewById(R.id.ingredientsRecyclerView);
-        List<Map<String, Object>> ingredients = (List<Map<String, Object>>) document.get("ingredients");
-        if (ingredients != null) {
-            ingredientsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            ingredientsRecyclerView.setAdapter(new IngredientsAdapter(ingredients));
-        }
+            // Setup ingredients list with type checking
+            RecyclerView ingredientsRecyclerView = root.findViewById(R.id.ingredientsRecyclerView);
+            Object ingredientsObj = document.get("ingredients");
+            if (ingredientsObj instanceof List) {
+                List<String> ingredients = (List<String>) ingredientsObj;
+                if (ingredients != null && !ingredients.isEmpty()) {
+                    ingredientsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+                    ingredientsRecyclerView.setAdapter(new IngredientsAdapter(ingredients));
+                } else {
+                    handleError("ingredients list is empty or null");
+                }
+            } else {
+                handleError("ingredients is not in the expected format");
+            }
 
-        // Setup instructions list
-        RecyclerView instructionsRecyclerView = root.findViewById(R.id.instructionsRecyclerView);
-        List<String> instructions = (List<String>) document.get("instructions");
-        if (instructions != null) {
-            instructionsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            instructionsRecyclerView.setAdapter(new InstructionsAdapter(instructions));
+            // Setup instructions list with type checking
+            RecyclerView instructionsRecyclerView = root.findViewById(R.id.instructionsRecyclerView);
+            Object instructionsObj = document.get("instructions");
+            if (instructionsObj instanceof List) {
+                List<String> instructions = (List<String>) instructionsObj;
+                if (instructions != null && !instructions.isEmpty()) {
+                    instructionsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+                    instructionsRecyclerView.setAdapter(new InstructionsAdapter(instructions));
+                } else {
+                    handleError("instructions list is empty or null");
+                }
+            } else {
+                handleError("instructions is not in the expected format");
+            }
+
+        } catch (Exception e) {
+            handleError("Error updating UI: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -209,14 +241,15 @@ public class RecipeDetailsFragment extends Fragment {
     private void handleError(String message) {
         if (getActivity() != null && root != null) {
             Snackbar.make(root, message, Snackbar.LENGTH_LONG).show();
+            Log.e("RecipeDetailsFragment", message);
         }
     }
 
     // Ingredients Adapter
     private static class IngredientsAdapter extends RecyclerView.Adapter<IngredientsAdapter.ViewHolder> {
-        private final List<Map<String, Object>> ingredients;
+        private final List<String> ingredients;
 
-        public IngredientsAdapter(List<Map<String, Object>> ingredients) {
+        public IngredientsAdapter(List<String> ingredients) {
             this.ingredients = ingredients;
         }
 
@@ -224,14 +257,13 @@ public class RecipeDetailsFragment extends Fragment {
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_ingredient, parent, false);
+                    .inflate(android.R.layout.simple_list_item_1, parent, false);
             return new ViewHolder(view);
         }
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            Map<String, Object> ingredient = ingredients.get(position);
-            holder.bind(ingredient);
+            holder.bind(ingredients.get(position));
         }
 
         @Override
@@ -240,25 +272,15 @@ public class RecipeDetailsFragment extends Fragment {
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
-            private final TextView nameText;
-            private final TextView quantityText;
-            private final TextView priceText;
+            private final TextView textView;
 
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
-                nameText = itemView.findViewById(R.id.ingredientName);
-                quantityText = itemView.findViewById(R.id.ingredientQuantity);
-                priceText = itemView.findViewById(R.id.ingredientPrice);
+                textView = (TextView) itemView;
             }
 
-            public void bind(Map<String, Object> ingredient) {
-                nameText.setText((String) ingredient.get("name"));
-                Double quantity = (Double) ingredient.get("quantity");
-                String unit = (String) ingredient.get("unit");
-                Double price = (Double) ingredient.get("price");
-
-                quantityText.setText(String.format("%.1f %s", quantity, unit));
-                priceText.setText("NRS " + String.format("%.2f", price));
+            public void bind(String ingredient) {
+                textView.setText(ingredient);
             }
         }
     }

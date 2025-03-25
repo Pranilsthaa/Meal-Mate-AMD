@@ -34,6 +34,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.DocumentReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -322,6 +323,9 @@ public class MealsFragment extends Fragment {
         String userId = auth.getCurrentUser().getUid();
         String day = mealDay.getDay();
 
+        // Show loading indicator for this day
+        adapter.setDayLoading(day, true);
+
         db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("day", day)
@@ -334,27 +338,73 @@ public class MealsFragment extends Fragment {
                         if (recipeIds != null) {
                             recipeIds.remove(recipe.getId());
 
-                            if (recipeIds.isEmpty()) {
-                                // If no recipes left, delete the document
-                                db.collection("meal_plans")
-                                        .document(document.getId())
-                                        .delete()
-                                        .addOnSuccessListener(aVoid -> loadMealPlan())
-                                        .addOnFailureListener(
-                                                e -> handleError("Error deleting meal plan: " + e.getMessage()));
-                            } else {
-                                // Update with remaining recipes
-                                db.collection("meal_plans")
-                                        .document(document.getId())
-                                        .update("recipeIds", recipeIds)
-                                        .addOnSuccessListener(aVoid -> loadMealPlan())
-                                        .addOnFailureListener(
-                                                e -> handleError("Error updating meal plan: " + e.getMessage()));
-                            }
+                            // Get the recipe details to remove its ingredients from grocery list
+                            db.collection("recipes")
+                                .document(recipe.getId())
+                                .get()
+                                .addOnSuccessListener(recipeDoc -> {
+                                    // Remove ingredients from grocery list
+                                    List<String> ingredients = (List<String>) recipeDoc.get("ingredients");
+                                    if (ingredients != null) {
+                                        removeIngredientsFromGroceryList(ingredients, userId);
+                                    }
+
+                                    // Now update or delete the meal plan
+                                    if (recipeIds.isEmpty()) {
+                                        // If no recipes left, delete the document
+                                        db.collection("meal_plans")
+                                                .document(document.getId())
+                                                .delete()
+                                                .addOnSuccessListener(aVoid -> {
+                                                    loadMealPlan();
+                                                    adapter.setDayLoading(day, false);
+                                                })
+                                                .addOnFailureListener(e -> {
+                                                    handleError("Error deleting meal plan: " + e.getMessage());
+                                                    adapter.setDayLoading(day, false);
+                                                });
+                                    } else {
+                                        // Update with remaining recipes
+                                        db.collection("meal_plans")
+                                                .document(document.getId())
+                                                .update("recipeIds", recipeIds)
+                                                .addOnSuccessListener(aVoid -> {
+                                                    loadMealPlan();
+                                                    adapter.setDayLoading(day, false);
+                                                })
+                                                .addOnFailureListener(e -> {
+                                                    handleError("Error updating meal plan: " + e.getMessage());
+                                                    adapter.setDayLoading(day, false);
+                                                });
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    handleError("Error loading recipe details: " + e.getMessage());
+                                    adapter.setDayLoading(day, false);
+                                });
                         }
                     }
                 })
-                .addOnFailureListener(e -> handleError("Error removing meal: " + e.getMessage()));
+                .addOnFailureListener(e -> {
+                    handleError("Error removing meal: " + e.getMessage());
+                    adapter.setDayLoading(day, false);
+                });
+    }
+
+    private void removeIngredientsFromGroceryList(List<String> ingredients, String userId) {
+        // Get reference to user's grocery list document
+        DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
+
+        // For each ingredient, create an update to remove it
+        Map<String, Object> updates = new HashMap<>();
+        for (String ingredient : ingredients) {
+            String ingredientId = ingredient.toLowerCase().replace(" ", "_");
+            updates.put(ingredientId, null); // Set to null to delete the field
+        }
+
+        // Update the document, removing the ingredients
+        groceryListRef.update(updates)
+            .addOnFailureListener(e -> handleError("Error removing ingredients from grocery list: " + e.getMessage()));
     }
 
     private void handleError(String errorMessage) {

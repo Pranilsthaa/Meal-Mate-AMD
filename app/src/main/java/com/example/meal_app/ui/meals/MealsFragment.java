@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,6 +36,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -272,6 +274,8 @@ public class MealsFragment extends Fragment {
                                 .addOnSuccessListener(documentReference -> {
                                     loadMealPlan();
                                     adapter.setDayLoading(day, false);
+                                    // Add ingredients to grocery list
+                                    addIngredientsToGroceryList(recipeId, userId);
                                 })
                                 .addOnFailureListener(e -> {
                                     handleError("Error creating meal plan: " + e.getMessage());
@@ -294,6 +298,8 @@ public class MealsFragment extends Fragment {
                                 .addOnSuccessListener(aVoid -> {
                                     loadMealPlan();
                                     adapter.setDayLoading(day, false);
+                                    // Add ingredients to grocery list
+                                    addIngredientsToGroceryList(recipeId, userId);
                                 })
                                 .addOnFailureListener(e -> {
                                     handleError("Error updating meal plan: " + e.getMessage());
@@ -305,6 +311,91 @@ public class MealsFragment extends Fragment {
                     handleError("Error checking meal plan: " + e.getMessage());
                     adapter.setDayLoading(day, false);
                 });
+    }
+
+    private void addIngredientsToGroceryList(String recipeId, String userId) {
+        // Get recipe ingredients
+        db.collection("recipes").document(recipeId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        // Get ingredients as List<String>
+                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
+                        String recipeName = documentSnapshot.getString("name");
+                        
+                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                            // Reference to user's grocery list document
+                            DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
+
+                            // Create a map to store all ingredient updates
+                            Map<String, Object> updates = new HashMap<>();
+
+                            // Process each ingredient
+                            for (String ingredient : ingredients) {
+                                // Create a unique ID for the ingredient using recipe name and ingredient
+                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                                
+                                // Create ingredient data
+                                Map<String, Object> ingredientData = new HashMap<>();
+                                ingredientData.put("name", ingredient);
+                                ingredientData.put("category", determineIngredientType(ingredient));
+                                ingredientData.put("bought", false);
+                                ingredientData.put("selectedForSms", false);
+                                ingredientData.put("price", 0.0); // Default price
+                                ingredientData.put("quantity", 1.0); // Default quantity
+                                ingredientData.put("unit", "g"); // Default unit
+                                ingredientData.put("userId", userId);
+                                
+                                // Add to updates map
+                                updates.put(ingredientId, ingredientData);
+                            }
+
+                            // Update the grocery list document with all ingredients at once
+                            groceryListRef.set(updates, SetOptions.merge())
+                                .addOnSuccessListener(aVoid -> {
+                                    Log.d("MealsFragment", "Successfully added ingredients to grocery list");
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e("MealsFragment", "Error updating grocery list", e);
+                                });
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("MealsFragment", "Error getting recipe ingredients", e);
+                });
+    }
+
+    private String determineIngredientType(String ingredient) {
+        // Common ingredient categories
+        ingredient = ingredient.toLowerCase();
+        
+        if (ingredient.contains("meat") || ingredient.contains("chicken") || 
+            ingredient.contains("beef") || ingredient.contains("pork") || 
+            ingredient.contains("fish") || ingredient.contains("lamb")) {
+            return "Meat & Fish";
+        } else if (ingredient.contains("milk") || ingredient.contains("cheese") || 
+                   ingredient.contains("yogurt") || ingredient.contains("cream") ||
+                   ingredient.contains("butter")) {
+            return "Dairy";
+        } else if (ingredient.contains("apple") || ingredient.contains("banana") || 
+                   ingredient.contains("orange") || ingredient.contains("berry") ||
+                   ingredient.contains("fruit")) {
+            return "Fruits";
+        } else if (ingredient.contains("carrot") || ingredient.contains("potato") || 
+                   ingredient.contains("onion") || ingredient.contains("tomato") ||
+                   ingredient.contains("vegetable")) {
+            return "Vegetables";
+        } else if (ingredient.contains("rice") || ingredient.contains("pasta") || 
+                   ingredient.contains("flour") || ingredient.contains("bread") ||
+                   ingredient.contains("cereal")) {
+            return "Grains & Pasta";
+        } else if (ingredient.contains("oil") || ingredient.contains("sauce") || 
+                   ingredient.contains("vinegar") || ingredient.contains("spice") ||
+                   ingredient.contains("herb")) {
+            return "Condiments & Spices";
+        }
+        
+        return "Other";
     }
 
     private MealDay findMealDayByName(String dayName) {
@@ -338,73 +429,78 @@ public class MealsFragment extends Fragment {
                         if (recipeIds != null) {
                             recipeIds.remove(recipe.getId());
 
-                            // Get the recipe details to remove its ingredients from grocery list
-                            db.collection("recipes")
-                                .document(recipe.getId())
-                                .get()
-                                .addOnSuccessListener(recipeDoc -> {
-                                    // Remove ingredients from grocery list
-                                    List<String> ingredients = (List<String>) recipeDoc.get("ingredients");
-                                    if (ingredients != null) {
-                                        removeIngredientsFromGroceryList(ingredients, userId);
-                                    }
+                            // Remove ingredients from grocery list
+                            removeIngredientsFromGroceryList(recipe.getId(), userId);
 
-                                    // Now update or delete the meal plan
-                                    if (recipeIds.isEmpty()) {
-                                        // If no recipes left, delete the document
-                                        db.collection("meal_plans")
-                                                .document(document.getId())
-                                                .delete()
-                                                .addOnSuccessListener(aVoid -> {
-                                                    loadMealPlan();
-                                                    adapter.setDayLoading(day, false);
-                                                })
-                                                .addOnFailureListener(e -> {
-                                                    handleError("Error deleting meal plan: " + e.getMessage());
-                                                    adapter.setDayLoading(day, false);
-                                                });
-                                    } else {
-                                        // Update with remaining recipes
-                                        db.collection("meal_plans")
-                                                .document(document.getId())
-                                                .update("recipeIds", recipeIds)
-                                                .addOnSuccessListener(aVoid -> {
-                                                    loadMealPlan();
-                                                    adapter.setDayLoading(day, false);
-                                                })
-                                                .addOnFailureListener(e -> {
-                                                    handleError("Error updating meal plan: " + e.getMessage());
-                                                    adapter.setDayLoading(day, false);
-                                                });
-                                    }
+                            // Now update or delete the meal plan
+                            if (recipeIds.isEmpty()) {
+                                // If no recipes left, delete the document
+                                db.collection("meal_plans")
+                                        .document(document.getId())
+                                        .delete()
+                                        .addOnSuccessListener(aVoid -> {
+                                            loadMealPlan();
+                                            adapter.setDayLoading(day, false);
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            handleError("Error deleting meal plan: " + e.getMessage());
+                                            adapter.setDayLoading(day, false);
+                                        });
+                            } else {
+                                // Update with remaining recipes
+                                db.collection("meal_plans")
+                                        .document(document.getId())
+                                        .update("recipeIds", recipeIds)
+                                        .addOnSuccessListener(aVoid -> {
+                                            loadMealPlan();
+                                            adapter.setDayLoading(day, false);
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            handleError("Error updating meal plan: " + e.getMessage());
+                                            adapter.setDayLoading(day, false);
+                                        });
+                            }
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    handleError("Error checking meal plan: " + e.getMessage());
+                    adapter.setDayLoading(day, false);
+                });
+    }
+
+    private void removeIngredientsFromGroceryList(String recipeId, String userId) {
+        // Get recipe ingredients to remove
+        db.collection("recipes").document(recipeId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
+                        String recipeName = documentSnapshot.getString("name");
+                        
+                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                            DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
+
+                            // Create a map of fields to delete
+                            Map<String, Object> updates = new HashMap<>();
+                            for (String ingredient : ingredients) {
+                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                                updates.put(ingredientId, FieldValue.delete());
+                            }
+
+                            // Remove the ingredients from the grocery list
+                            groceryListRef.update(updates)
+                                .addOnSuccessListener(aVoid -> {
+                                    Log.d("MealsFragment", "Successfully removed ingredients from grocery list");
                                 })
                                 .addOnFailureListener(e -> {
-                                    handleError("Error loading recipe details: " + e.getMessage());
-                                    adapter.setDayLoading(day, false);
+                                    Log.e("MealsFragment", "Error removing ingredients from grocery list", e);
                                 });
                         }
                     }
                 })
                 .addOnFailureListener(e -> {
-                    handleError("Error removing meal: " + e.getMessage());
-                    adapter.setDayLoading(day, false);
+                    Log.e("MealsFragment", "Error getting recipe ingredients for removal", e);
                 });
-    }
-
-    private void removeIngredientsFromGroceryList(List<String> ingredients, String userId) {
-        // Get reference to user's grocery list document
-        DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
-
-        // For each ingredient, create an update to remove it
-        Map<String, Object> updates = new HashMap<>();
-        for (String ingredient : ingredients) {
-            String ingredientId = ingredient.toLowerCase().replace(" ", "_");
-            updates.put(ingredientId, null); // Set to null to delete the field
-        }
-
-        // Update the document, removing the ingredients
-        groceryListRef.update(updates)
-            .addOnFailureListener(e -> handleError("Error removing ingredients from grocery list: " + e.getMessage()));
     }
 
     private void handleError(String errorMessage) {

@@ -59,16 +59,37 @@ public class GroceryListFragment extends Fragment implements GroceryListAdapter.
                             for (Map.Entry<String, Object> entry : groceryList.entrySet()) {
                                 try {
                                     Map<String, Object> ingredientData = (Map<String, Object>) entry.getValue();
+                                    if (ingredientData == null) continue; // Skip null entries
+                                    
                                     Log.d("GroceryListFragment", "Processing ingredient: " + ingredientData);
                                     
                                     Ingredient ingredient = new Ingredient();
                                     ingredient.setName((String) ingredientData.get("name"));
                                     ingredient.setCategory((String) ingredientData.get("category"));
-                                    ingredient.setPrice(((Number) ingredientData.get("price")).doubleValue());
-                                    ingredient.setQuantity(((Number) ingredientData.get("quantity")).doubleValue());
+                                    
+                                    // Handle numeric values with null checks
+                                    Object quantityObj = ingredientData.get("quantity");
+                                    if (quantityObj instanceof Number) {
+                                        ingredient.setQuantity(((Number) quantityObj).doubleValue());
+                                    } else {
+                                        ingredient.setQuantity(1.0); // Default value
+                                    }
+                                    
+                                    Object priceObj = ingredientData.get("price");
+                                    if (priceObj instanceof Number) {
+                                        ingredient.setPrice(((Number) priceObj).doubleValue());
+                                    } else {
+                                        ingredient.setPrice(0.0); // Default value
+                                    }
+                                    
                                     ingredient.setUnit((String) ingredientData.get("unit"));
-                                    ingredient.setBought((Boolean) ingredientData.get("bought"));
-                                    ingredient.setSelectedForSms((Boolean) ingredientData.get("selectedForSms"));
+                                    
+                                    // Handle boolean values with null checks
+                                    Object boughtObj = ingredientData.get("bought");
+                                    ingredient.setBought(boughtObj instanceof Boolean ? (Boolean) boughtObj : false);
+                                    
+                                    Object selectedForSmsObj = ingredientData.get("selectedForSms");
+                                    ingredient.setSelectedForSms(selectedForSmsObj instanceof Boolean ? (Boolean) selectedForSmsObj : false);
                                     
                                     Log.d("GroceryListFragment", "Created ingredient object: " + ingredient);
                                     ingredients.add(ingredient);

@@ -29,6 +29,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.FieldValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -576,17 +577,19 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                     if (documentSnapshot.exists()) {
                         // Get ingredients as List<String>
                         List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
-                        if (ingredients != null && !ingredients.isEmpty()) {
+                        String recipeName = documentSnapshot.getString("name");
+                        
+                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
                             // Reference to user's grocery list document
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
                             // Create a map to store all ingredient updates
                             Map<String, Object> updates = new HashMap<>();
-                            
+
                             // Process each ingredient
                             for (String ingredient : ingredients) {
-                                // Create a unique ID for the ingredient
-                                String ingredientId = ingredient.toLowerCase().replace(" ", "_");
+                                // Create a unique ID for the ingredient using recipe name and ingredient
+                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
                                 
                                 // Create ingredient data
                                 Map<String, Object> ingredientData = new HashMap<>();
@@ -606,6 +609,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                             // Update the grocery list document with all ingredients at once
                             groceryListRef.set(updates, SetOptions.merge())
                                 .addOnSuccessListener(aVoid -> {
+                                    Log.d("HomeFragment", "Successfully added ingredients to grocery list");
                                     if (getView() != null) {
                                         Snackbar.make(getView(), 
                                             "Added ingredients to grocery list", 
@@ -613,6 +617,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                     }
                                 })
                                 .addOnFailureListener(e -> {
+                                    Log.e("HomeFragment", "Error updating grocery list", e);
                                     if (getView() != null) {
                                         Snackbar.make(getView(), 
                                             "Error updating grocery list: " + e.getMessage(), 
@@ -623,11 +628,46 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                     }
                 })
                 .addOnFailureListener(e -> {
+                    Log.e("HomeFragment", "Error getting recipe ingredients", e);
                     if (getView() != null) {
                         Snackbar.make(getView(), 
                             "Error getting recipe ingredients: " + e.getMessage(), 
                             Snackbar.LENGTH_LONG).show();
                     }
+                });
+    }
+
+    private void removeIngredientsFromGroceryList(String recipeId, String userId) {
+        // Get recipe ingredients to remove
+        db.collection("recipes").document(recipeId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
+                        String recipeName = documentSnapshot.getString("name");
+                        
+                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                            DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
+
+                            // Create a map of fields to delete
+                            Map<String, Object> updates = new HashMap<>();
+                            for (String ingredient : ingredients) {
+                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                                updates.put(ingredientId, FieldValue.delete());
+                            }
+
+                            // Remove the ingredients from the grocery list
+                            groceryListRef.update(updates)
+                                .addOnSuccessListener(aVoid -> {
+                                    Log.d("HomeFragment", "Successfully removed ingredients from grocery list");
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e("HomeFragment", "Error removing ingredients from grocery list", e);
+                                });
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("HomeFragment", "Error getting recipe ingredients for removal", e);
                 });
     }
 

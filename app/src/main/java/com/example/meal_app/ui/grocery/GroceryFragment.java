@@ -45,6 +45,7 @@ import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import com.example.meal_app.utils.ToastUtil;
+import android.util.Log;
 
 public class GroceryFragment extends Fragment implements GroceryAdapter.OnGroceryItemListener {
 
@@ -149,131 +150,174 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void loadGroceryItems() {
-        if (auth.getCurrentUser() == null) {
-            if (getView() != null) {
-                ToastUtil.showErrorToast(requireContext(), "Please log in to view your grocery list");
-            }
-            return;
-        }
+        String userId = auth.getCurrentUser().getUid();
+        Log.d("GroceryFragment", "Loading grocery items for userId: " + userId);
 
-        try {
-            String userId = auth.getCurrentUser().getUid();
-            System.out.println("Loading grocery items for user: " + userId);
-
-            // Query all fields from the document
-            db.collection("groceryLists")
-                .document(userId)
-                .get()
+        db.collection("groceryLists").document(userId).get()
                 .addOnSuccessListener(documentSnapshot -> {
-                    try {
-                        if (!documentSnapshot.exists()) {
-                            if (getView() != null) {
-                                ToastUtil.showErrorToast(requireContext(), "No grocery list found for this user");
-                            }
-                            return;
-                        }
-
-                        Map<String, Object> data = documentSnapshot.getData();
-                        if (data == null) {
-                            System.out.println("No data found in document");
-                            return;
-                        }
-                        System.out.println("Document data: " + data);
-
-                        // Create a map to store items by type
-                        Map<String, List<GroceryItem>> itemsByType = new HashMap<>();
-                        List<GroceryItem> uncategorizedItems = new ArrayList<>();
-
-                        // Process each field in the document
-                        for (Map.Entry<String, Object> entry : data.entrySet()) {
-                            try {
-                                String fieldName = entry.getKey();
-                                Object value = entry.getValue();
-                                
-                                // Skip metadata fields
-                                if (fieldName.equals("userId") || fieldName.equals("lastUpdated")) {
-                                    continue;
-                                }
-
-                                // Each item is stored as a map
-                                if (value instanceof Map) {
-                                    Map<String, Object> itemData = (Map<String, Object>) value;
-                                    System.out.println("Processing item: " + fieldName);
-                                    System.out.println("Item data: " + itemData);
-
-                                    // Create GroceryItem object
-                                    GroceryItem item = new GroceryItem();
-                                    item.setId(fieldName);
-                                    item.setName((String) itemData.get("name"));
-                                    item.setQuantity(((Number) itemData.get("quantity")).doubleValue());
-                                    item.setUnit((String) itemData.get("unit"));
-                                    item.setCategory((String) itemData.get("type"));
-                                    item.setPrice(((Number) itemData.get("price")).doubleValue());
-                                    item.setPurchased((Boolean) itemData.get("isPurchased"));
-                                    item.setSelectedForSms((Boolean) itemData.get("isSelectedForSms"));
-
-                                    // Add to appropriate list based on category
-                                    String category = item.getCategory();
-                                    if (category != null && !category.isEmpty()) {
-                                        itemsByType.computeIfAbsent(category, k -> new ArrayList<>()).add(item);
-                                    } else {
-                                        uncategorizedItems.add(item);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                System.out.println("Error processing item: " + e.getMessage());
-                                e.printStackTrace();
-                            }
-                        }
-
-                        // Convert the categorized items into a flat list with headers
-                        List<Object> items = new ArrayList<>();
+                    if (documentSnapshot.exists()) {
+                        Map<String, Object> groceryList = documentSnapshot.getData();
+                        Log.d("GroceryFragment", "Grocery list data: " + groceryList);
                         
-                        // Add items by type
-                        for (Map.Entry<String, List<GroceryItem>> entry : itemsByType.entrySet()) {
-                            if (!entry.getValue().isEmpty()) {
-                                items.add(entry.getKey()); // Add type as header
-                                items.addAll(entry.getValue()); // Add items of this type
+                        if (groceryList != null && !groceryList.isEmpty()) {
+                            List<GroceryItem> ingredients = new ArrayList<>();
+                            for (Map.Entry<String, Object> entry : groceryList.entrySet()) {
+                                try {
+                                    Object value = entry.getValue();
+                                    if (value == null) {
+                                        Log.d("GroceryFragment", "Skipping null value for key: " + entry.getKey());
+                                        continue;
+                                    }
+                                    
+                                    Map<String, Object> ingredientData = (Map<String, Object>) value;
+                                    Log.d("GroceryFragment", "Processing item: " + entry.getKey());
+                                    Log.d("GroceryFragment", "Item data: " + ingredientData);
+                                    
+                                    // Skip if required fields are missing
+                                    if (!ingredientData.containsKey("name")) {
+                                        Log.e("GroceryFragment", "Missing name for item: " + entry.getKey());
+                                        continue;
+                                    }
+                                    
+                                    GroceryItem ingredient = new GroceryItem();
+                                    ingredient.setId(entry.getKey());
+                                    ingredient.setName((String) ingredientData.get("name"));
+                                    
+                                    // Handle numeric values with null checks
+                                    Object quantityObj = ingredientData.get("quantity");
+                                    if (quantityObj instanceof Number) {
+                                        ingredient.setQuantity(((Number) quantityObj).doubleValue());
+                                    } else {
+                                        ingredient.setQuantity(1.0); // Default value
+                                    }
+                                    
+                                    Object priceObj = ingredientData.get("price");
+                                    if (priceObj instanceof Number) {
+                                        ingredient.setPrice(((Number) priceObj).doubleValue());
+                                    } else {
+                                        ingredient.setPrice(0.0); // Default value
+                                    }
+                                    
+                                    // Handle unit with null check
+                                    Object unitObj = ingredientData.get("unit");
+                                    ingredient.setUnit(unitObj != null ? (String) unitObj : "");
+                                    
+                                    // Handle category with null check
+                                    Object categoryObj = ingredientData.get("category");
+                                    ingredient.setCategory(categoryObj != null ? (String) categoryObj : "Other");
+                                    
+                                    // Handle boolean values with null checks
+                                    Object boughtObj = ingredientData.get("bought");
+                                    ingredient.setPurchased(boughtObj instanceof Boolean ? (Boolean) boughtObj : false);
+                                    
+                                    Object selectedForSmsObj = ingredientData.get("selectedForSms");
+                                    ingredient.setSelectedForSms(selectedForSmsObj instanceof Boolean ? (Boolean) selectedForSmsObj : false);
+                                    
+                                    Log.d("GroceryFragment", "Created ingredient object: " + ingredient);
+                                    ingredients.add(ingredient);
+                                } catch (Exception e) {
+                                    Log.e("GroceryFragment", "Error processing ingredient: " + entry.getKey(), e);
+                                }
                             }
+                            
+                            Log.d("GroceryFragment", "Total ingredients loaded: " + ingredients.size());
+                            if (!ingredients.isEmpty()) {
+                                updateGroceryList(ingredients);
+                            } else {
+                                showEmptyState();
+                            }
+                        } else {
+                            Log.d("GroceryFragment", "Grocery list is empty");
+                            showEmptyState();
                         }
-
-                        // Add uncategorized items at the end if any
-                        if (!uncategorizedItems.isEmpty()) {
-                            items.add("Other");
-                            items.addAll(uncategorizedItems);
-                        }
-
-                        // Update the adapter with all items
-                        allItems = items;
-                        filteredItems = new ArrayList<>(items);
-                        adapter.updateData(filteredItems);
-
-                        // Update total price and progress
-                        updateTotalPrice();
-                        updateProgress();
-
-                    } catch (Exception e) {
-                        System.out.println("Error processing document: " + e.getMessage());
-                        e.printStackTrace();
-                        if (getView() != null) {
-                            ToastUtil.showErrorToast(requireContext(), "Error loading grocery items: " + e.getMessage());
-                        }
+                    } else {
+                        Log.d("GroceryFragment", "No grocery list document found");
+                        showEmptyState();
                     }
                 })
                 .addOnFailureListener(e -> {
-                    System.out.println("Error getting document: " + e.getMessage());
-                    e.printStackTrace();
+                    Log.e("GroceryFragment", "Error loading grocery list", e);
                     if (getView() != null) {
-                        ToastUtil.showErrorToast(requireContext(), "Error loading grocery list: " + e.getMessage());
+                        Snackbar.make(getView(), "Error loading grocery list: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
+    }
 
-        } catch (Exception e) {
-            System.out.println("Error in loadGroceryItems: " + e.getMessage());
-            e.printStackTrace();
-            if (getView() != null) {
-                ToastUtil.showErrorToast(requireContext(), "Error loading grocery items: " + e.getMessage());
+    private void updateGroceryList(List<GroceryItem> ingredients) {
+        Log.d("GroceryFragment", "Updating grocery list with " + ingredients.size() + " ingredients");
+        
+        // Group ingredients by category
+        Map<String, List<GroceryItem>> categorizedIngredients = new HashMap<>();
+        for (GroceryItem ingredient : ingredients) {
+            String category = ingredient.getCategory();
+            if (!categorizedIngredients.containsKey(category)) {
+                categorizedIngredients.put(category, new ArrayList<>());
             }
+            categorizedIngredients.get(category).add(ingredient);
+        }
+        
+        Log.d("GroceryFragment", "Categories found: " + categorizedIngredients.keySet());
+
+        // Convert categorized ingredients to List<Object> format
+        List<Object> items = new ArrayList<>();
+        for (Map.Entry<String, List<GroceryItem>> entry : categorizedIngredients.entrySet()) {
+            // Add category header
+            items.add(entry.getKey());
+            // Add items in this category
+            items.addAll(entry.getValue());
+        }
+
+        // Update adapter with the new items
+        if (adapter != null) {
+            Log.d("GroceryFragment", "Setting up RecyclerView");
+            allItems = items;
+            filteredItems = new ArrayList<>(items);
+            adapter.updateData(filteredItems);
+            
+            // Update totals and progress
+            updateTotals();
+            updateProgress();
+            
+            // Show/hide views based on whether we have items
+            if (isAdded() && getView() != null) {
+                View recyclerView = getView().findViewById(R.id.groceryRecyclerView);
+                View emptyStateLayout = getView().findViewById(R.id.emptyStateLayout);
+                
+                if (recyclerView != null && emptyStateLayout != null) {
+                    if (items.isEmpty()) {
+                        recyclerView.setVisibility(View.GONE);
+                        emptyStateLayout.setVisibility(View.VISIBLE);
+                    } else {
+                        recyclerView.setVisibility(View.VISIBLE);
+                        emptyStateLayout.setVisibility(View.GONE);
+                    }
+                } else {
+                    Log.e("GroceryFragment", "RecyclerView or emptyStateLayout is null");
+                }
+            } else {
+                Log.e("GroceryFragment", "Fragment is not attached or view is null");
+            }
+            
+            Log.d("GroceryFragment", "RecyclerView setup complete");
+        } else {
+            Log.e("GroceryFragment", "adapter is null");
+        }
+    }
+
+    private void showEmptyState() {
+        Log.d("GroceryFragment", "Showing empty state");
+        if (isAdded() && getView() != null) {
+            View recyclerView = getView().findViewById(R.id.groceryRecyclerView);
+            View emptyStateLayout = getView().findViewById(R.id.emptyStateLayout);
+            
+            if (recyclerView != null && emptyStateLayout != null) {
+                recyclerView.setVisibility(View.GONE);
+                emptyStateLayout.setVisibility(View.VISIBLE);
+            } else {
+                Log.e("GroceryFragment", "RecyclerView or emptyStateLayout is null");
+            }
+        } else {
+            Log.e("GroceryFragment", "Fragment is not attached or view is null");
         }
     }
 

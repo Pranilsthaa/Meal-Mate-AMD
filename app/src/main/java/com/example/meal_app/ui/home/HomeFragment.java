@@ -4,12 +4,14 @@ import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
@@ -44,7 +46,6 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private List<Recipe> recipes;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private RecyclerView todayMealsRecyclerView;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -56,11 +57,12 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
             db = FirebaseFirestore.getInstance();
             auth = FirebaseAuth.getInstance();
 
-            // Set username in title
+            // Set username in title and setup today's meal plan
             if (auth.getCurrentUser() != null) {
                 String userEmail = auth.getCurrentUser().getEmail();
                 String username = userEmail != null ? userEmail.split("@")[0] : "User";
                 binding.welcomeText.setText("Welcome, " + username);
+                setupTodayMealPlan(); // Setup today's meal plan after confirming user is logged in
             } else {
                 binding.welcomeText.setText("Welcome, Guest");
             }
@@ -68,11 +70,9 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
             // Initialize views
             recipeRecyclerView = binding.recipeRecyclerView;
             showMoreButton = binding.showMoreButton;
-            todayMealsRecyclerView = binding.todayMealsRecyclerView;
 
             // Setup RecyclerViews
             setupRecyclerViews();
-            setupTodayMealPlan();
 
             // Setup show more button
             if (showMoreButton != null) {
@@ -97,7 +97,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
             // Setup profile button click listener
             if (binding.profileButton != null) {
                 binding.profileButton.setOnClickListener(view -> {
-                    // TODO: Implement profile functionality
+                    Navigation.findNavController(requireView()).navigate(R.id.navigation_profile);
                 });
             }
         } catch (Exception e) {
@@ -119,11 +119,6 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 recipeAdapter = new RecipeAdapter(recipes, this);
                 recipeRecyclerView.setAdapter(recipeAdapter);
             }
-
-            // Setup today's meals RecyclerView
-            if (todayMealsRecyclerView != null) {
-                todayMealsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            }
         } catch (Exception e) {
             e.printStackTrace();
             if (getView() != null) {
@@ -137,29 +132,67 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         Calendar calendar = Calendar.getInstance();
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         String today = days[calendar.get(Calendar.DAY_OF_WEEK) - 1];
+        
+        Log.d("HomeFragment", "Today's day: " + today);
 
         // Query meal plan for today
         String userId = auth.getCurrentUser().getUid();
+        Log.d("HomeFragment", "Querying meal plans for userId: " + userId + " and day: " + today);
+        
         db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("day", today)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    Log.d("HomeFragment", "Found " + queryDocumentSnapshots.size() + " meal plans");
                     if (!queryDocumentSnapshots.isEmpty()) {
                         DocumentSnapshot mealPlan = queryDocumentSnapshots.getDocuments().get(0);
                         List<String> recipeIds = (List<String>) mealPlan.get("recipeIds");
+                        Log.d("HomeFragment", "Found " + (recipeIds != null ? recipeIds.size() : 0) + " recipe IDs");
+                        
                         if (recipeIds != null && !recipeIds.isEmpty()) {
                             loadTodayRecipes(recipeIds);
+                        } else {
+                            Log.d("HomeFragment", "No recipe IDs found in meal plan");
+                            showEmptyMealPlan();
                         }
+                    } else {
+                        Log.d("HomeFragment", "No meal plan found for today");
+                        showEmptyMealPlan();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("HomeFragment", "Error loading meal plan", e);
+                    if (getView() != null) {
+                        Snackbar.make(getView(), "Error loading meal plan: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
     }
 
+    private void showEmptyMealPlan() {
+        // Hide all meal sections
+        binding.breakfastSection.setVisibility(View.GONE);
+        binding.lunchSection.setVisibility(View.GONE);
+        binding.dinnerSection.setVisibility(View.GONE);
+        
+        // Show empty state message
+        binding.emptyMealPlanText.setVisibility(View.VISIBLE);
+        binding.emptyMealPlanText.setText("No meals planned for today");
+    }
+
     private void loadTodayRecipes(List<String> recipeIds) {
-        List<Recipe> todayRecipes = new ArrayList<>();
+        List<Recipe> breakfastRecipes = new ArrayList<>();
+        List<Recipe> lunchRecipes = new ArrayList<>();
+        List<Recipe> dinnerRecipes = new ArrayList<>();
         AtomicInteger loadedCount = new AtomicInteger(0);
 
+        // Hide empty state message
+        binding.emptyMealPlanText.setVisibility(View.GONE);
+
+        Log.d("HomeFragment", "Loading " + recipeIds.size() + " recipes");
+
         for (String recipeId : recipeIds) {
+            Log.d("HomeFragment", "Loading recipe with ID: " + recipeId);
             db.collection("recipes").document(recipeId).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
@@ -198,36 +231,101 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 } else {
                                     recipe.setInstructions(new String[0]);
                                 }
-
-                                todayRecipes.add(recipe);
+                                
+                                Log.d("HomeFragment", "Loaded recipe: " + recipe.getName() + " with category: " + recipe.getCategory());
+                                
+                                // Categorize recipe
+                                String category = recipe.getCategory().toLowerCase();
+                                if (category.contains("breakfast")) {
+                                    breakfastRecipes.add(recipe);
+                                } else if (category.contains("lunch")) {
+                                    lunchRecipes.add(recipe);
+                                } else if (category.contains("dinner")) {
+                                    dinnerRecipes.add(recipe);
+                                }
                             } catch (Exception e) {
-                                e.printStackTrace();
+                                Log.e("HomeFragment", "Error loading recipe: " + recipeId, e);
                                 if (getView() != null) {
                                     Snackbar.make(getView(), "Error loading recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                                 }
                             }
+                        } else {
+                            Log.d("HomeFragment", "Recipe document does not exist: " + recipeId);
                         }
-                        if (loadedCount.incrementAndGet() == recipeIds.size()) {
-                            // All recipes loaded, setup adapter
-                            RecipeAdapter todayAdapter = new RecipeAdapter(todayRecipes, new RecipeAdapter.OnRecipeClickListener() {
-                                @Override
-                                public void onAddToPlanClick(Recipe recipe) {
-                                    // Do nothing as the button will be hidden
-                                }
+                        
+                        int currentCount = loadedCount.incrementAndGet();
+                        Log.d("HomeFragment", "Loaded " + currentCount + " of " + recipeIds.size() + " recipes");
+                        
+                        if (currentCount == recipeIds.size()) {
+                            Log.d("HomeFragment", "All recipes loaded. Breakfast: " + breakfastRecipes.size() + 
+                                    ", Lunch: " + lunchRecipes.size() + 
+                                    ", Dinner: " + dinnerRecipes.size());
+                            
+                            // All recipes loaded, setup adapters for each section
+                            setupMealSection(binding.breakfastSection, "Breakfast", breakfastRecipes);
+                            setupMealSection(binding.lunchSection, "Lunch", lunchRecipes);
+                            setupMealSection(binding.dinnerSection, "Dinner", dinnerRecipes);
 
-                                @Override
-                                public void onRecipeClick(Recipe recipe) {
-                                    Bundle bundle = new Bundle();
-                                    bundle.putString("recipeId", recipe.getId());
-                                    bundle.putBoolean("fromMeals", true);
-                                    Navigation.findNavController(requireView())
-                                            .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
-                                }
-                            }, true); // Pass true to indicate this is for Today's Meal Plan
-                            todayMealsRecyclerView.setAdapter(todayAdapter);
+                            // Show/hide sections based on content
+                            binding.breakfastSection.setVisibility(breakfastRecipes.isEmpty() ? View.GONE : View.VISIBLE);
+                            binding.lunchSection.setVisibility(lunchRecipes.isEmpty() ? View.GONE : View.VISIBLE);
+                            binding.dinnerSection.setVisibility(dinnerRecipes.isEmpty() ? View.GONE : View.VISIBLE);
                         }
                     });
         }
+    }
+
+    private void setupMealSection(View section, String title, List<Recipe> recipes) {
+        if (recipes.isEmpty()) return;
+
+        // Set section title based on the section type
+        TextView titleView;
+        RecyclerView recyclerView;
+        
+        if (section == binding.breakfastSection) {
+            titleView = binding.breakfastTitle;
+            recyclerView = binding.breakfastRecyclerView;
+        } else if (section == binding.lunchSection) {
+            titleView = binding.lunchTitle;
+            recyclerView = binding.lunchRecyclerView;
+        } else if (section == binding.dinnerSection) {
+            titleView = binding.dinnerTitle;
+            recyclerView = binding.dinnerRecyclerView;
+        } else {
+            return;
+        }
+
+        // Set the title
+        titleView.setText(title);
+        titleView.setVisibility(View.VISIBLE);
+
+        // Configure RecyclerView
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+        recyclerView.setHasFixedSize(true);
+        
+        // Create and set adapter
+        RecipeAdapter adapter = new RecipeAdapter(recipes, new RecipeAdapter.OnRecipeClickListener() {
+            @Override
+            public void onAddToPlanClick(Recipe recipe) {
+                // Do nothing as the button will be hidden
+            }
+
+            @Override
+            public void onRecipeClick(Recipe recipe) {
+                Bundle bundle = new Bundle();
+                bundle.putString("recipeId", recipe.getId());
+                bundle.putBoolean("fromMeals", true);
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
+            }
+        }, true); // Pass true to indicate this is for Today's Meal Plan
+        
+        recyclerView.setAdapter(adapter);
+        
+        // Make sure the section is visible
+        section.setVisibility(View.VISIBLE);
+        
+        Log.d("HomeFragment", "Setup section: " + title + " with " + recipes.size() + " recipes");
     }
 
     @Override
@@ -476,6 +574,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         db.collection("recipes").document(recipeId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
+                        // Get ingredients as List<String>
                         List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
                         if (ingredients != null && !ingredients.isEmpty()) {
                             // Reference to user's grocery list document
@@ -486,19 +585,18 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                             
                             // Process each ingredient
                             for (String ingredient : ingredients) {
-                                // Create a unique ID for the ingredient to avoid duplicates
+                                // Create a unique ID for the ingredient
                                 String ingredientId = ingredient.toLowerCase().replace(" ", "_");
                                 
                                 // Create ingredient data
                                 Map<String, Object> ingredientData = new HashMap<>();
                                 ingredientData.put("name", ingredient);
-                                ingredientData.put("category", "Dinner"); // Default category, adjust as needed
-                                ingredientData.put("isPurchased", false);
-                                ingredientData.put("isSelectedForSms", false);
-                                ingredientData.put("price", 200.0); // Default price, adjust as needed
-                                ingredientData.put("quantity", 2.0); // Default quantity, adjust as needed
-                                ingredientData.put("type", determineIngredientType(ingredient));
-                                ingredientData.put("unit", "g");
+                                ingredientData.put("category", determineIngredientType(ingredient));
+                                ingredientData.put("bought", false);
+                                ingredientData.put("selectedForSms", false);
+                                ingredientData.put("price", 0.0); // Default price
+                                ingredientData.put("quantity", 1.0); // Default quantity
+                                ingredientData.put("unit", "g"); // Default unit
                                 ingredientData.put("userId", userId);
                                 
                                 // Add to updates map
@@ -531,6 +629,15 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                             Snackbar.LENGTH_LONG).show();
                     }
                 });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Refresh today's meal plan when the fragment is focused
+        if (auth.getCurrentUser() != null) {
+            setupTodayMealPlan();
+        }
     }
 
     @Override

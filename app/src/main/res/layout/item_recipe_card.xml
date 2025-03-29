@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/recipeCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Background View for Swipe Actions -->
+        <LinearLayout
+            android:id="@+id/swipeBackground"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <!-- Edit Action (Right Swipe) -->
+            <TextView
+                android:id="@+id/editAction"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#4285F4"
+                android:gravity="start|center_vertical"
+                android:paddingStart="24dp"
+                android:text="Edit"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:visibility="gone"/>
+
+            <!-- Delete Action (Left Swipe) -->
+            <TextView
+                android:id="@+id/deleteAction"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#EA4335"
+                android:gravity="end|center_vertical"
+                android:paddingEnd="24dp"
+                android:text="Delete"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:visibility="gone"/>
+        </LinearLayout>
+
+        <!-- Foreground Content -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/foreground"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/white"
+            android:padding="8dp">
+
+            <ImageView
+                android:id="@+id/recipeImage"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:scaleType="centerCrop"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"/>
+
+            <TextView
+                android:id="@+id/recipeName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                app:layout_constraintStart_toEndOf="@id/recipeImage"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"/>
+
+            <TextView
+                android:id="@+id/recipeCategory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                android:textColor="@android:color/darker_gray"
+                app:layout_constraintStart_toEndOf="@id/recipeImage"
+                app:layout_constraintTop_toBottomOf="@id/recipeName"/>
+
+            <TextView
+                android:id="@+id/recipeTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                android:textColor="@android:color/darker_gray"
+                app:layout_constraintStart_toEndOf="@id/recipeImage"
+                app:layout_constraintTop_toBottomOf="@id/recipeCategory"/>
+
+            <TextView
+                android:id="@+id/recipeServings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                android:textColor="@android:color/darker_gray"
+                app:layout_constraintStart_toEndOf="@id/recipeImage"
+                app:layout_constraintTop_toBottomOf="@id/recipeTime"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </FrameLayout>
+</com.google.android.material.card.MaterialCardView> 

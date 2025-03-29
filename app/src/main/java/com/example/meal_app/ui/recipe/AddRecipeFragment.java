@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import androidx.navigation.NavController;
+import com.bumptech.glide.Glide;
 import com.example.meal_app.R;
 import com.example.meal_app.utils.Constants;
 import com.google.android.material.snackbar.Snackbar;
@@ -53,10 +54,18 @@ public class AddRecipeFragment extends Fragment {
     private double totalPrice = 0.00;
     private List<View> ingredientViews = new ArrayList<>();
     private List<View> instructionViews = new ArrayList<>();
-    private FirebaseFirestore db;
+    protected FirebaseFirestore db;
     private OkHttpClient client;
     private View saveButton;
     private Snackbar loadingSnackbar;
+    protected EditText recipeNameInput;
+    protected EditText descriptionInput;
+    protected EditText cookingTimeInput;
+    protected EditText servingsInput;
+    protected Spinner categorySpinner;
+    protected ArrayAdapter<String> categoryAdapter;
+    protected List<Map<String, Object>> ingredientsList = new ArrayList<>();
+    protected List<String> instructionsList = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -73,6 +82,13 @@ public class AddRecipeFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_add_recipe, container, false);
 
+        // Initialize views
+        recipeNameInput = root.findViewById(R.id.recipeNameInput);
+        descriptionInput = root.findViewById(R.id.recipeDescriptionInput);
+        cookingTimeInput = root.findViewById(R.id.cookingTimeInput);
+        servingsInput = root.findViewById(R.id.servingsInput);
+        categorySpinner = root.findViewById(R.id.categorySpinner);
+
         // Setup back button
         ImageButton backButton = root.findViewById(R.id.backButton);
         backButton.setOnClickListener(v -> {
@@ -85,17 +101,109 @@ public class AddRecipeFragment extends Fragment {
         return root;
     }
 
+    // Protected getter methods for EditRecipeFragment
+    protected FirebaseFirestore getDb() {
+        return db;
+    }
+
+    protected EditText getRecipeNameInput() {
+        return recipeNameInput;
+    }
+
+    protected EditText getDescriptionInput() {
+        return descriptionInput;
+    }
+
+    protected EditText getCookingTimeInput() {
+        return cookingTimeInput;
+    }
+
+    protected EditText getServingsInput() {
+        return servingsInput;
+    }
+
+    protected Spinner getCategorySpinner() {
+        return categorySpinner;
+    }
+
+    protected ArrayAdapter<String> getCategoryAdapter() {
+        return categoryAdapter;
+    }
+
+    protected List<Map<String, Object>> getIngredientsList() {
+        return ingredientsList;
+    }
+
+    protected List<String> getInstructionsList() {
+        return instructionsList;
+    }
+
+    protected void loadImageFromUrl(String imageUrl) {
+        if (getView() != null) {
+            ImageView imageView = getView().findViewById(R.id.recipeImageView);
+            View uploadPrompt = getView().findViewById(R.id.uploadPromptLayout);
+            ImageButton removeButton = getView().findViewById(R.id.removeImageButton);
+
+            Glide.with(this)
+                    .load(imageUrl)
+                    .into(imageView);
+
+            uploadPrompt.setVisibility(View.GONE);
+            removeButton.setVisibility(View.VISIBLE);
+        }
+    }
+
+    protected boolean validateInputs() {
+        if (recipeNameInput.getText().toString().trim().isEmpty()) {
+            showError("Please enter a recipe name");
+            return false;
+        }
+        if (descriptionInput.getText().toString().trim().isEmpty()) {
+            showError("Please enter a recipe description");
+            return false;
+        }
+        if (cookingTimeInput.getText().toString().trim().isEmpty()) {
+            showError("Please enter cooking time");
+            return false;
+        }
+        if (servingsInput.getText().toString().trim().isEmpty()) {
+            showError("Please enter number of servings");
+            return false;
+        }
+        if (categorySpinner.getSelectedItemPosition() == 0) {
+            showError("Please select a category");
+            return false;
+        }
+        return true;
+    }
+
+    protected Map<String, Object> createRecipeData() {
+        Map<String, Object> recipe = new HashMap<>();
+        recipe.put("name", recipeNameInput.getText().toString().trim());
+        recipe.put("description", descriptionInput.getText().toString().trim());
+        recipe.put("cookingTime", Integer.parseInt(cookingTimeInput.getText().toString().trim()));
+        recipe.put("servings", Integer.parseInt(servingsInput.getText().toString().trim()));
+        recipe.put("category", categorySpinner.getSelectedItem().toString());
+        recipe.put("totalPrice", totalPrice);
+        recipe.put("createdAt", System.currentTimeMillis());
+        recipe.put("userId", FirebaseAuth.getInstance().getCurrentUser().getUid());
+        recipe.put("ingredients", ingredientsList);
+        recipe.put("instructions", instructionsList);
+        return recipe;
+    }
+
+    protected void showError(String message) {
+        if (getView() != null) {
+            Snackbar.make(getView(), message, Snackbar.LENGTH_LONG).show();
+        }
+    }
+
     private void setupViews(View root) {
         // Setup category spinner
-        Spinner categorySpinner = root.findViewById(R.id.categorySpinner);
-        List<String> categories = new ArrayList<>();
-        categories.add("Select Category"); // Add hint as first item
-        categories.addAll(getStringArrayAsList(R.array.recipe_categories));
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(),
-                android.R.layout.simple_spinner_item, categories);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        categorySpinner.setAdapter(adapter);
+        categoryAdapter = new ArrayAdapter<String>(requireContext(),
+                android.R.layout.simple_spinner_item, getStringArrayAsList(R.array.recipe_categories));
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categorySpinner.setAdapter(categoryAdapter);
 
         // Setup image upload
         View imageUploadCard = root.findViewById(R.id.imageUploadCard);
@@ -112,12 +220,11 @@ public class AddRecipeFragment extends Fragment {
             selectedImageUri = null;
             ImageView imageView = root.findViewById(R.id.recipeImageView);
             imageView.setImageDrawable(null);
-            removeImageButton.setVisibility(View.GONE);
             root.findViewById(R.id.uploadPromptLayout).setVisibility(View.VISIBLE);
         });
 
         // Setup save button
-        root.findViewById(R.id.saveButton).setOnClickListener(v -> saveRecipe(root));
+        root.findViewById(R.id.saveButton).setOnClickListener(v -> saveRecipe());
 
         // Setup add ingredient button
         root.findViewById(R.id.addIngredientButton).setOnClickListener(v -> addIngredientView(root));
@@ -215,33 +322,9 @@ public class AddRecipeFragment extends Fragment {
         totalText.setText(String.format("Total: NRS %.2f", totalPrice));
     }
 
-    private void saveRecipe(View root) {
+    protected void saveRecipe() {
         // Validate inputs
-        String name = ((EditText) root.findViewById(R.id.recipeNameInput)).getText().toString().trim();
-        String description = ((EditText) root.findViewById(R.id.recipeDescriptionInput)).getText().toString().trim();
-        String cookingTimeStr = ((EditText) root.findViewById(R.id.cookingTimeInput)).getText().toString().trim();
-        String servingsStr = ((EditText) root.findViewById(R.id.servingsInput)).getText().toString().trim();
-        Spinner categorySpinner = root.findViewById(R.id.categorySpinner);
-
-        // Validation checks
-        if (name.isEmpty()) {
-            handleError("Please enter a recipe name");
-            return;
-        }
-        if (description.isEmpty()) {
-            handleError("Please enter a recipe description");
-            return;
-        }
-        if (cookingTimeStr.isEmpty()) {
-            handleError("Please enter cooking time");
-            return;
-        }
-        if (servingsStr.isEmpty()) {
-            handleError("Please enter number of servings");
-            return;
-        }
-        if (categorySpinner.getSelectedItemPosition() == 0) {
-            handleError("Please select a category");
+        if (!validateInputs()) {
             return;
         }
 
@@ -251,26 +334,13 @@ public class AddRecipeFragment extends Fragment {
                 .setMessage("Are you sure you want to save this recipe?")
                 .setPositiveButton("Yes", (dialog, which) -> {
                     // Show loading state
-                    saveButton = root.findViewById(R.id.saveButton);
+                    saveButton = requireView().findViewById(R.id.saveButton);
                     saveButton.setEnabled(false);
-                    loadingSnackbar = Snackbar.make(root, "Saving recipe...", Snackbar.LENGTH_INDEFINITE);
+                    loadingSnackbar = Snackbar.make(requireView(), "Saving recipe...", Snackbar.LENGTH_INDEFINITE);
                     loadingSnackbar.show();
 
                     // Create recipe data
-                    Map<String, Object> recipe = new HashMap<>();
-                    recipe.put("name", name);
-                    recipe.put("description", description);
-                    recipe.put("cookingTime", Integer.parseInt(cookingTimeStr));
-                    recipe.put("servings", Integer.parseInt(servingsStr));
-                    recipe.put("category", categorySpinner.getSelectedItem().toString());
-                    recipe.put("totalPrice", totalPrice);
-                    recipe.put("createdAt", System.currentTimeMillis());
-
-                    // Add userId to recipe
-                    recipe.put("userId", FirebaseAuth.getInstance().getCurrentUser().getUid());
-
-                    // Add ingredients and instructions
-                    addIngredientsAndInstructions(recipe);
+                    Map<String, Object> recipe = createRecipeData();
 
                     // If there's an image, upload it first, otherwise save directly
                     if (selectedImageUri != null) {
@@ -278,7 +348,7 @@ public class AddRecipeFragment extends Fragment {
                             String base64Image = getBase64FromUri(selectedImageUri);
                             uploadImageToImgBB(base64Image, recipe);
                         } catch (IOException e) {
-                            handleError("Failed to process image: " + e.getMessage());
+                            showError("Failed to process image: " + e.getMessage());
                         }
                     } else {
                         saveRecipeToFirestore(recipe);
@@ -286,45 +356,6 @@ public class AddRecipeFragment extends Fragment {
                 })
                 .setNegativeButton("No", null)
                 .show();
-    }
-
-    private void addIngredientsAndInstructions(Map<String, Object> recipe) {
-        // Add ingredients
-        List<Map<String, Object>> ingredients = new ArrayList<>();
-        for (View ingredientView : ingredientViews) {
-            String ingredientName = ((EditText) ingredientView.findViewById(R.id.ingredientNameInput))
-                    .getText().toString().trim();
-            String quantity = ((EditText) ingredientView.findViewById(R.id.quantityInput))
-                    .getText().toString().trim();
-            String unit = ((Spinner) ingredientView.findViewById(R.id.unitSpinner))
-                    .getSelectedItem().toString();
-            String type = ((Spinner) ingredientView.findViewById(R.id.typeSpinner))
-                    .getSelectedItem().toString();
-            String price = ((EditText) ingredientView.findViewById(R.id.priceInput))
-                    .getText().toString().trim();
-
-            if (!ingredientName.isEmpty() && !quantity.isEmpty() && !price.isEmpty()) {
-                Map<String, Object> ingredient = new HashMap<>();
-                ingredient.put("name", ingredientName);
-                ingredient.put("quantity", Double.parseDouble(quantity));
-                ingredient.put("unit", unit);
-                ingredient.put("type", type);
-                ingredient.put("price", Double.parseDouble(price));
-                ingredients.add(ingredient);
-            }
-        }
-        recipe.put("ingredients", ingredients);
-
-        // Add instructions
-        List<String> instructions = new ArrayList<>();
-        for (View instructionView : instructionViews) {
-            String instruction = ((EditText) instructionView.findViewById(R.id.stepInstructionInput))
-                    .getText().toString().trim();
-            if (!instruction.isEmpty()) {
-                instructions.add(instruction);
-            }
-        }
-        recipe.put("instructions", instructions);
     }
 
     private String getBase64FromUri(Uri uri) throws IOException {
@@ -356,7 +387,7 @@ public class AddRecipeFragment extends Fragment {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 requireActivity().runOnUiThread(() -> {
-                    handleError("Network error: " + e.getMessage()
+                    showError("Network error: " + e.getMessage()
                             + "\nPlease check your internet connection and try again.");
                 });
             }
@@ -371,7 +402,7 @@ public class AddRecipeFragment extends Fragment {
                         } else if (response.code() == 403) {
                             errorMsg = "API key error. Please contact support.";
                         }
-                        handleError(errorMsg);
+                        showError(errorMsg);
                     });
                     return;
                 }
@@ -390,7 +421,7 @@ public class AddRecipeFragment extends Fragment {
                     });
                 } catch (JSONException e) {
                     requireActivity().runOnUiThread(() -> {
-                        handleError("Failed to process image upload response: " + e.getMessage());
+                        showError("Failed to process image upload response: " + e.getMessage());
                     });
                 }
             }
@@ -462,30 +493,16 @@ public class AddRecipeFragment extends Fragment {
                                 navController.navigateUp();
                             })
                             .addOnFailureListener(e -> {
-                                handleError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
+                                showError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
                             });
                     })
                     .addOnFailureListener(e -> {
-                        handleError("Failed to update grocery list: " + e.getMessage() + "\nPlease try again.");
+                        showError("Failed to update grocery list: " + e.getMessage() + "\nPlease try again.");
                     });
             }
         }).addOnFailureListener(e -> {
-            handleError("Failed to check grocery list: " + e.getMessage() + "\nPlease try again.");
+            showError("Failed to check grocery list: " + e.getMessage() + "\nPlease try again.");
         });
-    }
-
-    private void handleError(String errorMessage) {
-        if (loadingSnackbar != null) {
-            loadingSnackbar.dismiss();
-        }
-        if (saveButton != null) {
-            saveButton.setEnabled(true);
-        }
-        Snackbar.make(requireView(), errorMessage, Snackbar.LENGTH_LONG)
-                .setAction("OK", v -> {
-                })
-                .setActionTextColor(ContextCompat.getColor(requireContext(), R.color.orange))
-                .show();
     }
 
     @Override

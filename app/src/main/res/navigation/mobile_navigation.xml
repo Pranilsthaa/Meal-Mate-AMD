@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/navigation_home"
         android:name="com.example.meal_app.ui.home.HomeFragment"
-        android:label="Home"
+        android:label="@string/title_home"
         tools:layout="@layout/fragment_home">
         <action
             android:id="@+id/action_navigation_home_to_addRecipeFragment"
@@ -21,12 +21,18 @@
     <fragment
         android:id="@+id/navigation_meals"
         android:name="com.example.meal_app.ui.meals.MealsFragment"
-        android:label="Meals"
+        android:label="@string/title_meals"
         tools:layout="@layout/fragment_meals">
         <action
             android:id="@+id/action_navigation_meals_to_recipeDetailsFragment"
             app:destination="@id/navigation_recipe_details" />
     </fragment>
+
+    <fragment
+        android:id="@+id/navigation_recipes"
+        android:name="com.example.meal_app.ui.recipes.RecipesFragment"
+        android:label="@string/title_recipes"
+        tools:layout="@layout/fragment_recipes" />
 
     <fragment
         android:id="@+id/navigation_grocery"
@@ -37,7 +43,8 @@
     <fragment
         android:id="@+id/navigation_profile"
         android:name="com.example.meal_app.ui.profile.ProfileFragment"
-        android:label="Profile" />
+        android:label="@string/title_profile"
+        tools:layout="@layout/fragment_profile" />
 
     <fragment
         android:id="@+id/navigation_add_recipe"
@@ -54,5 +61,27 @@
             android:name="recipeId"
             app:argType="string" />
     </fragment>
+
+    <fragment
+        android:id="@+id/editRecipeFragment"
+        android:name="com.example.meal_app.ui.recipe.EditRecipeFragment"
+        android:label="Edit Recipe"
+        tools:layout="@layout/fragment_edit_recipe">
+        <argument
+            android:name="recipeId"
+            app:argType="string" />
+    </fragment>
+
+    <action
+        android:id="@+id/action_navigation_recipes_to_recipeDetailsFragment"
+        app:destination="@id/navigation_recipe_details" />
+
+    <action
+        android:id="@+id/action_navigation_recipes_to_addRecipeFragment"
+        app:destination="@id/navigation_add_recipe" />
+
+    <action
+        android:id="@+id/action_navigation_recipes_to_editRecipeFragment"
+        app:destination="@id/editRecipeFragment" />
 
 </navigation>

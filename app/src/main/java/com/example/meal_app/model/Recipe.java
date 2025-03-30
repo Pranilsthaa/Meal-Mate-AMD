@@ -1,5 +1,9 @@
 package com.example.meal_app.model;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class Recipe {
     private String id;
     private String name;
@@ -7,11 +11,13 @@ public class Recipe {
     private String imageUrl;
     private int cookTime;
     private int servings;
-    private String[] ingredients;
+    private String[] ingredients;  // For display purposes
+    private List<Map<String, Object>> ingredientsList;  // Full ingredient data
     private String[] instructions;
     private String category;
     private double calories;
     private double totalPrice;
+    private boolean featured;
     private String userId;
 
     // Default constructor for Firestore
@@ -24,9 +30,10 @@ public class Recipe {
         this.servings = 0;
         this.ingredients = new String[0];
         this.instructions = new String[0];
-        this.category = "";
+        this.ingredientsList = new ArrayList<>();
         this.calories = 0.0;
         this.totalPrice = 0.0;
+        this.featured = false;
         this.userId = "";
     }
 
@@ -43,6 +50,8 @@ public class Recipe {
         this.instructions = instructions;
         this.category = category;
         this.calories = calories;
+        this.ingredientsList = new ArrayList<>();
+        this.featured = false;
     }
 
     // Getters
@@ -58,7 +67,11 @@ public class Recipe {
     public String getCategory() { return category; }
     public double getCalories() { return calories; }
     public double getTotalPrice() { return totalPrice; }
+    public boolean isFeatured() { return featured; }
     public String getUserId() { return userId; }
+    public List<Map<String, Object>> getIngredientsList() {
+        return ingredientsList;
+    }
 
     // Setters
     public void setId(String id) { this.id = id; }
@@ -72,5 +85,9 @@ public class Recipe {
     public void setCategory(String category) { this.category = category; }
     public void setCalories(double calories) { this.calories = calories; }
     public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
+    public void setFeatured(boolean featured) { this.featured = featured; }
     public void setUserId(String userId) { this.userId = userId; }
+    public void setIngredientsList(List<Map<String, Object>> ingredientsList) {
+        this.ingredientsList = ingredientsList;
+    }
 }

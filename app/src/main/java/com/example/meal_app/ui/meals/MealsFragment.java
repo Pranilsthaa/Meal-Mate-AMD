@@ -318,50 +318,95 @@ public class MealsFragment extends Fragment {
         db.collection("recipes").document(recipeId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        // Get ingredients as List<String>
-                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
-                        String recipeName = documentSnapshot.getString("name");
+                        Object ingredientsObj = documentSnapshot.get("ingredients");
+                        final List<Map<String, Object>> finalIngredients = new ArrayList<>();
                         
-                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                        // Handle both List<String> and List<Map> formats
+                        if (ingredientsObj instanceof List<?>) {
+                            List<?> ingredientsList = (List<?>) ingredientsObj;
+                            if (!ingredientsList.isEmpty()) {
+                                if (ingredientsList.get(0) instanceof String) {
+                                    // Convert List<String> to List<Map>
+                                    for (Object ing : ingredientsList) {
+                                        String ingStr = (String) ing;
+                                        Map<String, Object> ingMap = new HashMap<>();
+                                        ingMap.put("name", ingStr);
+                                        ingMap.put("quantity", 1.0);
+                                        ingMap.put("unit", "unit");
+                                        finalIngredients.add(ingMap);
+                                    }
+                                } else if (ingredientsList.get(0) instanceof Map) {
+                                    // Already in Map format
+                                    finalIngredients.addAll((List<Map<String, Object>>) ingredientsObj);
+                                }
+                            }
+                        }
+                        
+                        if (!finalIngredients.isEmpty()) {
                             // Reference to user's grocery list document
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
-                            // Create a map to store all ingredient updates
-                            Map<String, Object> updates = new HashMap<>();
+                            // Get the current grocery list first
+                            groceryListRef.get().addOnSuccessListener(groceryDoc -> {
+                                Map<String, Object> existingList = groceryDoc.exists() ? groceryDoc.getData() : new HashMap<>();
+                                Map<String, Object> updates = new HashMap<>();
 
-                            // Process each ingredient
-                            for (String ingredient : ingredients) {
-                                // Create a unique ID for the ingredient using recipe name and ingredient
-                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
-                                
-                                // Create ingredient data
-                                Map<String, Object> ingredientData = new HashMap<>();
-                                ingredientData.put("name", ingredient);
-                                ingredientData.put("category", determineIngredientType(ingredient));
-                                ingredientData.put("bought", false);
-                                ingredientData.put("selectedForSms", false);
-                                ingredientData.put("price", 0.0); // Default price
-                                ingredientData.put("quantity", 1.0); // Default quantity
-                                ingredientData.put("unit", "g"); // Default unit
-                                ingredientData.put("userId", userId);
-                                
-                                // Add to updates map
-                                updates.put(ingredientId, ingredientData);
-                            }
+                                // Process each ingredient
+                                for (Map<String, Object> ingredient : finalIngredients) {
+                                    String name = (String) ingredient.get("name");
+                                    if (name != null) {
+                                        // Create a unique ID for the ingredient
+                                        String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                                        
+                                        // Check if ingredient already exists
+                                        if (existingList.containsKey(ingredientId)) {
+                                            // Update existing ingredient
+                                            Map<String, Object> existingIngredient = (Map<String, Object>) existingList.get(ingredientId);
+                                            double existingQuantity = existingIngredient.containsKey("quantity") ? 
+                                                ((Number) existingIngredient.get("quantity")).doubleValue() : 0.0;
+                                            double newQuantity = ingredient.containsKey("quantity") ? 
+                                                ((Number) ingredient.get("quantity")).doubleValue() : 1.0;
+                                            
+                                            // Combine quantities
+                                            Map<String, Object> updatedIngredient = new HashMap<>(existingIngredient);
+                                            updatedIngredient.put("quantity", existingQuantity + newQuantity);
+                                            updates.put(ingredientId, updatedIngredient);
+                                        } else {
+                                            // Add new ingredient
+                                            Map<String, Object> ingredientData = new HashMap<>(ingredient);
+                                            ingredientData.put("bought", false);
+                                            ingredientData.put("selectedForSms", false);
+                                            ingredientData.put("userId", userId);
+                                            if (!ingredientData.containsKey("quantity")) {
+                                                ingredientData.put("quantity", 1.0);
+                                            }
+                                            if (!ingredientData.containsKey("unit")) {
+                                                ingredientData.put("unit", "unit");
+                                            }
+                                            updates.put(ingredientId, ingredientData);
+                                        }
+                                    }
+                                }
 
-                            // Update the grocery list document with all ingredients at once
-                            groceryListRef.set(updates, SetOptions.merge())
-                                .addOnSuccessListener(aVoid -> {
-                                    Log.d("MealsFragment", "Successfully added ingredients to grocery list");
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e("MealsFragment", "Error updating grocery list", e);
-                                });
+                                // Update the grocery list with merged ingredients
+                                if (!updates.isEmpty()) {
+                                    groceryListRef.set(updates, SetOptions.merge())
+                                        .addOnSuccessListener(aVoid -> {
+                                            Log.d("MealsFragment", "Successfully added ingredients to grocery list");
+                                            Snackbar.make(requireView(), "Added ingredients to grocery list", Snackbar.LENGTH_SHORT).show();
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            Log.e("MealsFragment", "Error updating grocery list", e);
+                                            Snackbar.make(requireView(), "Error updating grocery list: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                                        });
+                                }
+                            });
                         }
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.e("MealsFragment", "Error getting recipe ingredients", e);
+                    Snackbar.make(requireView(), "Error getting recipe ingredients: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                 });
     }
 
@@ -474,32 +519,59 @@ public class MealsFragment extends Fragment {
         db.collection("recipes").document(recipeId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
-                        String recipeName = documentSnapshot.getString("name");
+                        Object ingredientsObj = documentSnapshot.get("ingredients");
+                        List<String> ingredientNames = new ArrayList<>();
                         
-                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                        // Handle both List<String> and List<Map> formats
+                        if (ingredientsObj instanceof List<?>) {
+                            List<?> ingredientsList = (List<?>) ingredientsObj;
+                            if (!ingredientsList.isEmpty()) {
+                                if (ingredientsList.get(0) instanceof String) {
+                                    // If ingredients are stored as strings
+                                    for (Object ing : ingredientsList) {
+                                        ingredientNames.add((String) ing);
+                                    }
+                                } else if (ingredientsList.get(0) instanceof Map) {
+                                    // If ingredients are stored as maps
+                                    List<Map<String, Object>> ingredients = (List<Map<String, Object>>) ingredientsObj;
+                                    for (Map<String, Object> ingredient : ingredients) {
+                                        String name = (String) ingredient.get("name");
+                                        if (name != null) {
+                                            ingredientNames.add(name);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!ingredientNames.isEmpty()) {
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
                             // Create a map of fields to delete
                             Map<String, Object> updates = new HashMap<>();
-                            for (String ingredient : ingredients) {
-                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                            for (String name : ingredientNames) {
+                                String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
                                 updates.put(ingredientId, FieldValue.delete());
                             }
 
                             // Remove the ingredients from the grocery list
-                            groceryListRef.update(updates)
-                                .addOnSuccessListener(aVoid -> {
-                                    Log.d("MealsFragment", "Successfully removed ingredients from grocery list");
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e("MealsFragment", "Error removing ingredients from grocery list", e);
-                                });
+                            if (!updates.isEmpty()) {
+                                groceryListRef.update(updates)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d("MealsFragment", "Successfully removed ingredients from grocery list");
+                                        Snackbar.make(requireView(), "Removed ingredients from grocery list", Snackbar.LENGTH_SHORT).show();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e("MealsFragment", "Error removing ingredients from grocery list", e);
+                                        Snackbar.make(requireView(), "Error removing ingredients from grocery list", Snackbar.LENGTH_LONG).show();
+                                    });
+                            }
                         }
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.e("MealsFragment", "Error getting recipe ingredients for removal", e);
+                    Snackbar.make(requireView(), "Error getting recipe ingredients", Snackbar.LENGTH_LONG).show();
                 });
     }
 

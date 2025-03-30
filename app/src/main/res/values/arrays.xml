@@ -1,29 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="recipe_categories">
+        <item>None</item>
         <item>Breakfast</item>
         <item>Lunch</item>
         <item>Dinner</item>
     </string-array>
 
     <string-array name="ingredient_units">
+        <item>Select Unit</item>
         <item>g</item>
         <item>kg</item>
         <item>ml</item>
         <item>L</item>
-        <item>tsp</item>
-        <item>tbsp</item>
         <item>cup</item>
+        <item>tbsp</item>
+        <item>tsp</item>
         <item>piece</item>
-        <item>unit</item>
+        <item>slice</item>
     </string-array>
 
     <string-array name="ingredient_types">
+        <item>Select Type</item>
         <item>Vegetables</item>
-        <item>Proteins</item>
+        <item>Fruits</item>
+        <item>Meat</item>
         <item>Dairy</item>
         <item>Grains</item>
-        <item>Spices &amp; Condiments</item>
+        <item>Spices</item>
+        <item>Condiments</item>
         <item>Beverages</item>
+        <item>Snacks</item>
+        <item>Other</item>
     </string-array>
 </resources> 

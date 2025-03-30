@@ -1,0 +1,136 @@
+{
+  "featured_recipes": [
+    {
+      "id": "1",
+      "name": "Pancakes",
+      "description": "Fluffy homemade pancakes",
+      "imageUrl": "https://example.com/pancakes.jpg",
+      "cookTime": 20,
+      "servings": 4,
+      "category": "Breakfast",
+      "calories": 350,
+      "ingredients": [
+        {
+          "name": "Flour",
+          "quantity": 2,
+          "unit": "cup",
+          "price": 20,
+          "type": "Grains"
+        },
+        {
+          "name": "Milk",
+          "quantity": 1.5,
+          "unit": "cup",
+          "price": 15,
+          "type": "Dairy"
+        }
+      ],
+      "instructions": [
+        "Mix dry ingredients",
+        "Add wet ingredients",
+        "Cook on griddle"
+      ]
+    },
+    {
+      "id": "featured_2",
+      "name": "Chicken Stir Fry",
+      "description": "Quick and healthy chicken stir fry with vegetables",
+      "imageUrl": "https://example.com/stir-fry.jpg",
+      "cookTime": 20,
+      "servings": 4,
+      "category": "Lunch",
+      "calories": 400,
+      "ingredients": [
+        {
+          "name": "Chicken Breast",
+          "quantity": 500,
+          "unit": "g",
+          "price": 200,
+          "type": "Meat"
+        },
+        {
+          "name": "Mixed Vegetables",
+          "quantity": 2,
+          "unit": "cup",
+          "price": 100,
+          "type": "Vegetables"
+        },
+        {
+          "name": "Soy Sauce",
+          "quantity": 3,
+          "unit": "tbsp",
+          "price": 30,
+          "type": "Condiments"
+        },
+        {
+          "name": "Garlic",
+          "quantity": 2,
+          "unit": "piece",
+          "price": 20,
+          "type": "Vegetables"
+        }
+      ],
+      "instructions": [
+        "Cut chicken into bite-sized pieces",
+        "Heat oil in a wok or large pan",
+        "Stir fry chicken until cooked",
+        "Add vegetables and stir fry",
+        "Add soy sauce and seasonings"
+      ]
+    },
+    {
+      "id": "featured_3",
+      "name": "Vegetable Curry",
+      "description": "Spicy and flavorful vegetable curry",
+      "imageUrl": "https://example.com/curry.jpg",
+      "cookTime": 30,
+      "servings": 4,
+      "category": "Dinner",
+      "calories": 350,
+      "ingredients": [
+        {
+          "name": "Mixed Vegetables",
+          "quantity": 4,
+          "unit": "cup",
+          "type": "Vegetables",
+          "price": 150
+        },
+        {
+          "name": "Coconut Milk",
+          "quantity": 400,
+          "unit": "ml",
+          "type": "Dairy",
+          "price": 80
+        },
+        {
+          "name": "Curry Powder",
+          "quantity": 2,
+          "unit": "tbsp",
+          "type": "Spices",
+          "price": 30
+        },
+        {
+          "name": "Onion",
+          "quantity": 1,
+          "unit": "piece",
+          "type": "Vegetables",
+          "price": 20
+        },
+        {
+          "name": "Garlic",
+          "quantity": 3,
+          "unit": "piece",
+          "type": "Vegetables",
+          "price": 20
+        }
+      ],
+      "instructions": [
+        "Chop all vegetables",
+        "Sauté onions and garlic",
+        "Add curry powder and cook",
+        "Add vegetables and coconut milk",
+        "Simmer until vegetables are tender"
+      ]
+    }
+  ]
+} 

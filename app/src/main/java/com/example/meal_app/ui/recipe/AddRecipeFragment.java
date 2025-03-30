@@ -7,6 +7,8 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -51,7 +53,6 @@ public class AddRecipeFragment extends Fragment {
 
     private static final int PICK_IMAGE_REQUEST = 1;
     private Uri selectedImageUri;
-    private double totalPrice = 0.00;
     private List<View> ingredientViews = new ArrayList<>();
     private List<View> instructionViews = new ArrayList<>();
     protected FirebaseFirestore db;
@@ -64,8 +65,10 @@ public class AddRecipeFragment extends Fragment {
     protected EditText servingsInput;
     protected Spinner categorySpinner;
     protected ArrayAdapter<String> categoryAdapter;
-    protected List<Map<String, Object>> ingredientsList = new ArrayList<>();
+    protected List<String> ingredientsList = new ArrayList<>();
     protected List<String> instructionsList = new ArrayList<>();
+    private TextView totalPriceText;
+    private double totalPrice = 0.0;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -101,36 +104,39 @@ public class AddRecipeFragment extends Fragment {
         return root;
     }
 
-    // Protected getter methods for EditRecipeFragment
-    protected FirebaseFirestore getDb() {
-        return db;
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        totalPriceText = view.findViewById(R.id.totalPriceText);
+        updateTotalPrice();
     }
 
+    // Getter methods for EditRecipeFragment
     protected EditText getRecipeNameInput() {
-        return recipeNameInput;
+        return requireView().findViewById(R.id.recipeNameInput);
     }
 
     protected EditText getDescriptionInput() {
-        return descriptionInput;
+        return requireView().findViewById(R.id.recipeDescriptionInput);
     }
 
     protected EditText getCookingTimeInput() {
-        return cookingTimeInput;
+        return requireView().findViewById(R.id.cookingTimeInput);
     }
 
     protected EditText getServingsInput() {
-        return servingsInput;
+        return requireView().findViewById(R.id.servingsInput);
     }
 
     protected Spinner getCategorySpinner() {
-        return categorySpinner;
+        return requireView().findViewById(R.id.categorySpinner);
     }
 
-    protected ArrayAdapter<String> getCategoryAdapter() {
-        return categoryAdapter;
+    protected ArrayAdapter<CharSequence> getCategoryAdapter() {
+        return (ArrayAdapter<CharSequence>) getCategorySpinner().getAdapter();
     }
 
-    protected List<Map<String, Object>> getIngredientsList() {
+    protected List<String> getIngredientsList() {
         return ingredientsList;
     }
 
@@ -138,18 +144,22 @@ public class AddRecipeFragment extends Fragment {
         return instructionsList;
     }
 
-    protected void loadImageFromUrl(String imageUrl) {
-        if (getView() != null) {
-            ImageView imageView = getView().findViewById(R.id.recipeImageView);
-            View uploadPrompt = getView().findViewById(R.id.uploadPromptLayout);
-            ImageButton removeButton = getView().findViewById(R.id.removeImageButton);
+    protected FirebaseFirestore getDb() {
+        return db;
+    }
 
+    protected void showError(String message) {
+        if (getView() != null) {
+            Snackbar.make(getView(), message, Snackbar.LENGTH_LONG).show();
+        }
+    }
+
+    protected void loadImageFromUrl(String imageUrl) {
+        if (imageUrl != null && !imageUrl.isEmpty() && getView() != null) {
+            ImageView recipeImageView = getView().findViewById(R.id.recipeImageView);
             Glide.with(this)
                     .load(imageUrl)
-                    .into(imageView);
-
-            uploadPrompt.setVisibility(View.GONE);
-            removeButton.setVisibility(View.VISIBLE);
+                    .into(recipeImageView);
         }
     }
 
@@ -184,18 +194,76 @@ public class AddRecipeFragment extends Fragment {
         recipe.put("cookingTime", Integer.parseInt(cookingTimeInput.getText().toString().trim()));
         recipe.put("servings", Integer.parseInt(servingsInput.getText().toString().trim()));
         recipe.put("category", categorySpinner.getSelectedItem().toString());
-        recipe.put("totalPrice", totalPrice);
         recipe.put("createdAt", System.currentTimeMillis());
         recipe.put("userId", FirebaseAuth.getInstance().getCurrentUser().getUid());
-        recipe.put("ingredients", ingredientsList);
-        recipe.put("instructions", instructionsList);
-        return recipe;
-    }
 
-    protected void showError(String message) {
-        if (getView() != null) {
-            Snackbar.make(getView(), message, Snackbar.LENGTH_LONG).show();
+        // Collect ingredients as maps with all properties
+        List<Map<String, Object>> ingredients = new ArrayList<>();
+        for (View ingredientView : ingredientViews) {
+            EditText nameInput = ingredientView.findViewById(R.id.ingredientNameInput);
+            EditText quantityInput = ingredientView.findViewById(R.id.quantityInput);
+            EditText priceInput = ingredientView.findViewById(R.id.priceInput);
+            Spinner unitSpinner = ingredientView.findViewById(R.id.unitSpinner);
+            Spinner typeSpinner = ingredientView.findViewById(R.id.typeSpinner);
+
+            String name = nameInput.getText().toString().trim();
+            String quantityStr = quantityInput.getText().toString().trim();
+            String priceStr = priceInput.getText().toString().trim();
+            String unit = unitSpinner.getSelectedItem().toString();
+            String type = typeSpinner.getSelectedItem().toString();
+
+            if (!name.isEmpty()) {
+                Map<String, Object> ingredient = new HashMap<>();
+                ingredient.put("name", name);
+                ingredient.put("quantity", quantityStr.isEmpty() ? 0 : Integer.parseInt(quantityStr));
+                ingredient.put("price", priceStr.isEmpty() ? 0 : Integer.parseInt(priceStr));
+                ingredient.put("unit", unit);
+                ingredient.put("type", type);
+                ingredients.add(ingredient);
+            }
         }
+        recipe.put("ingredients", ingredients);
+
+        // Collect instructions
+        instructionsList.clear();
+        for (View instructionView : instructionViews) {
+            EditText stepInput = instructionView.findViewById(R.id.stepInput);
+            String step = stepInput.getText().toString().trim();
+            if (!step.isEmpty()) {
+                instructionsList.add(step);
+            }
+        }
+        recipe.put("instructions", instructionsList);
+
+        // Debug log to show the data structure
+        android.util.Log.d("AddRecipeFragment", "Recipe Data Structure:");
+        android.util.Log.d("AddRecipeFragment", "------------------------");
+        android.util.Log.d("AddRecipeFragment", "name: " + recipe.get("name"));
+        android.util.Log.d("AddRecipeFragment", "description: " + recipe.get("description"));
+        android.util.Log.d("AddRecipeFragment", "cookingTime: " + recipe.get("cookingTime"));
+        android.util.Log.d("AddRecipeFragment", "servings: " + recipe.get("servings"));
+        android.util.Log.d("AddRecipeFragment", "category: " + recipe.get("category"));
+        android.util.Log.d("AddRecipeFragment", "createdAt: " + recipe.get("createdAt"));
+        android.util.Log.d("AddRecipeFragment", "userId: " + recipe.get("userId"));
+        android.util.Log.d("AddRecipeFragment", "ingredients: [");
+        for (Map<String, Object> ingredient : ingredients) {
+            android.util.Log.d("AddRecipeFragment", "  {");
+            android.util.Log.d("AddRecipeFragment", "    name: " + ingredient.get("name"));
+            android.util.Log.d("AddRecipeFragment", "    quantity: " + ingredient.get("quantity"));
+            android.util.Log.d("AddRecipeFragment", "    unit: " + ingredient.get("unit"));
+            android.util.Log.d("AddRecipeFragment", "    price: " + ingredient.get("price"));
+            android.util.Log.d("AddRecipeFragment", "    type: " + ingredient.get("type"));
+            android.util.Log.d("AddRecipeFragment", "  }");
+        }
+        android.util.Log.d("AddRecipeFragment", "]");
+        android.util.Log.d("AddRecipeFragment", "instructions: [");
+        for (String instruction : instructionsList) {
+            android.util.Log.d("AddRecipeFragment", "  " + instruction);
+        }
+        android.util.Log.d("AddRecipeFragment", "]");
+        android.util.Log.d("AddRecipeFragment", "------------------------");
+
+        return recipe;
     }
 
     private void setupViews(View root) {
@@ -260,19 +328,26 @@ public class AddRecipeFragment extends Fragment {
         typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         typeSpinner.setAdapter(typeAdapter);
 
+        // Setup price input listener
+        EditText priceInput = ingredientView.findViewById(R.id.priceInput);
+        priceInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateTotalPrice();
+            }
+        });
+
         // Setup remove button
         ingredientView.findViewById(R.id.removeIngredientButton).setOnClickListener(v -> {
             container.removeView(ingredientView);
             ingredientViews.remove(ingredientView);
             updateTotalPrice();
-        });
-
-        // Setup price change listener
-        EditText priceInput = ingredientView.findViewById(R.id.priceInput);
-        priceInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                updateTotalPrice();
-            }
         });
 
         container.addView(ingredientView);
@@ -306,20 +381,21 @@ public class AddRecipeFragment extends Fragment {
     }
 
     private void updateTotalPrice() {
-        totalPrice = 0.00;
+        totalPrice = 0.0;
         for (View ingredientView : ingredientViews) {
             EditText priceInput = ingredientView.findViewById(R.id.priceInput);
-            String priceText = priceInput.getText().toString();
-            if (!priceText.isEmpty()) {
+            String priceStr = priceInput.getText().toString().trim();
+            if (!priceStr.isEmpty()) {
                 try {
-                    totalPrice += Double.parseDouble(priceText);
+                    totalPrice += Double.parseDouble(priceStr);
                 } catch (NumberFormatException e) {
-                    // Ignore invalid input
+                    // Skip invalid numbers
                 }
             }
         }
-        TextView totalText = requireView().findViewById(R.id.ingredientsTotalText);
-        totalText.setText(String.format("Total: NRS %.2f", totalPrice));
+        if (totalPriceText != null) {
+            totalPriceText.setText(String.format("Total: NRS %.2f", totalPrice));
+        }
     }
 
     protected void saveRecipe() {
@@ -429,80 +505,21 @@ public class AddRecipeFragment extends Fragment {
     }
 
     private void saveRecipeToFirestore(Map<String, Object> recipe) {
-        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        DocumentReference userGroceryRef = db.collection("groceryLists").document(userId);
-
-        // First, get the current grocery list to check for existing items
-        userGroceryRef.get().addOnSuccessListener(documentSnapshot -> {
-            Map<String, Object> groceryList = new HashMap<>();
-            if (documentSnapshot.exists()) {
-                groceryList = documentSnapshot.getData();
-            }
-
-            // Get ingredients from the recipe
-            List<Map<String, Object>> ingredients = (List<Map<String, Object>>) recipe.get("ingredients");
-            if (ingredients != null) {
-                // Process each ingredient
-                for (Map<String, Object> ingredient : ingredients) {
-                    String name = (String) ingredient.get("name");
-                    if (name != null) {
-                        // Create a unique ID for the ingredient
-                        String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
-                        
-                        // Check if ingredient already exists
-                        if (groceryList.containsKey(ingredientId)) {
-                            // Update existing ingredient
-                            Map<String, Object> existingIngredient = (Map<String, Object>) groceryList.get(ingredientId);
-                            double existingQuantity = ((Number) existingIngredient.get("quantity")).doubleValue();
-                            double newQuantity = ((Number) ingredient.get("quantity")).doubleValue();
-                            double existingPrice = ((Number) existingIngredient.get("price")).doubleValue();
-                            double newPrice = ((Number) ingredient.get("price")).doubleValue();
-                            
-                            // Combine quantities and prices
-                            existingIngredient.put("quantity", existingQuantity + newQuantity);
-                            existingIngredient.put("price", existingPrice + newPrice);
-                        } else {
-                            // Add new ingredient
-                            Map<String, Object> groceryItem = new HashMap<>();
-                            groceryItem.put("name", name);
-                            groceryItem.put("quantity", ingredient.get("quantity"));
-                            groceryItem.put("unit", ingredient.get("unit"));
-                            groceryItem.put("type", ingredient.get("type"));
-                            groceryItem.put("price", ingredient.get("price"));
-                            groceryItem.put("category", recipe.get("category"));
-                            groceryItem.put("isPurchased", false);
-                            groceryItem.put("isSelectedForSms", false);
-                            groceryList.put(ingredientId, groceryItem);
-                        }
-                    }
+        // Save the recipe directly
+        db.collection("recipes")
+            .add(recipe)
+            .addOnSuccessListener(documentReference -> {
+                if (loadingSnackbar != null) {
+                    loadingSnackbar.dismiss();
                 }
-
-                // Save the updated grocery list
-                userGroceryRef.set(groceryList, SetOptions.merge())
-                    .addOnSuccessListener(aVoid -> {
-                        // Now save the recipe
-                        db.collection("recipes")
-                            .add(recipe)
-                            .addOnSuccessListener(documentReference -> {
-                                if (loadingSnackbar != null) {
-                                    loadingSnackbar.dismiss();
-                                }
-                                Snackbar.make(requireView(), "Recipe saved successfully!", Snackbar.LENGTH_SHORT).show();
-                                NavController navController = Navigation.findNavController(requireActivity(),
-                                        R.id.nav_host_fragment_activity_main);
-                                navController.navigateUp();
-                            })
-                            .addOnFailureListener(e -> {
-                                showError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
-                            });
-                    })
-                    .addOnFailureListener(e -> {
-                        showError("Failed to update grocery list: " + e.getMessage() + "\nPlease try again.");
-                    });
-            }
-        }).addOnFailureListener(e -> {
-            showError("Failed to check grocery list: " + e.getMessage() + "\nPlease try again.");
-        });
+                Snackbar.make(requireView(), "Recipe saved successfully!", Snackbar.LENGTH_SHORT).show();
+                NavController navController = Navigation.findNavController(requireActivity(),
+                        R.id.nav_host_fragment_activity_main);
+                navController.navigateUp();
+            })
+            .addOnFailureListener(e -> {
+                showError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
+            });
     }
 
     @Override

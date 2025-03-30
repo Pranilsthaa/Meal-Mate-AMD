@@ -30,6 +30,8 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.FieldValue;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -37,6 +39,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClickListener {
 
@@ -116,14 +121,123 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
             // Setup featured recipes RecyclerView
             if (recipeRecyclerView != null) {
                 recipeRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-                recipes = RecipeData.getPredefinedRecipes();
+                recipes = new ArrayList<>();
                 recipeAdapter = new RecipeAdapter(recipes, this);
                 recipeRecyclerView.setAdapter(recipeAdapter);
+                
+                // Load featured recipes from JSON file
+                loadFeaturedRecipes();
             }
         } catch (Exception e) {
             e.printStackTrace();
             if (getView() != null) {
                 Snackbar.make(getView(), "Error setting up RecyclerViews: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void loadFeaturedRecipes() {
+        try {
+            // Read the JSON file from assets
+            InputStream is = requireContext().getAssets().open("featured_recipes.json");
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+            String json = new String(buffer, "UTF-8");
+
+            // Debug log for JSON content
+            Log.d("HomeFragment", "Featured Recipes JSON content:");
+            Log.d("HomeFragment", json);
+
+            // Parse JSON
+            JSONObject jsonObject = new JSONObject(json);
+            JSONArray featuredRecipesArray = jsonObject.getJSONArray("featured_recipes");
+            
+            recipes.clear();
+            
+            // Convert each JSON object to Recipe
+            for (int i = 0; i < featuredRecipesArray.length(); i++) {
+                JSONObject recipeJson = featuredRecipesArray.getJSONObject(i);
+                Recipe recipe = new Recipe();
+                
+                recipe.setId(recipeJson.getString("id"));
+                recipe.setName(recipeJson.getString("name"));
+                recipe.setDescription(recipeJson.getString("description"));
+                recipe.setImageUrl(recipeJson.getString("imageUrl"));
+                recipe.setCookTime(recipeJson.getInt("cookTime"));
+                recipe.setServings(recipeJson.getInt("servings"));
+                recipe.setCategory(recipeJson.getString("category"));
+                recipe.setCalories(recipeJson.getDouble("calories"));
+                recipe.setTotalPrice(recipeJson.optDouble("totalPrice", 0.0));
+                recipe.setFeatured(true);
+
+                Log.d("HomeFragment", "Loading featured recipe: " + recipe.getName());
+
+                // Parse ingredients
+                JSONArray ingredientsArray = recipeJson.getJSONArray("ingredients");
+                List<Map<String, Object>> ingredientsList = new ArrayList<>();
+                List<String> ingredientsDisplay = new ArrayList<>();
+
+                Log.d("HomeFragment", "Processing ingredients for " + recipe.getName() + ":");
+
+                for (int j = 0; j < ingredientsArray.length(); j++) {
+                    JSONObject ingredientJson = ingredientsArray.getJSONObject(j);
+                    Map<String, Object> ingredient = new HashMap<>();
+                    
+                    // Get ingredient data with detailed logging
+                    String name = ingredientJson.getString("name");
+                    double quantity = ingredientJson.optDouble("quantity", 1.0);
+                    String unit = ingredientJson.optString("unit", "unit");
+                    double price = ingredientJson.optDouble("price", 0.0);
+                    String type = ingredientJson.optString("type", "Other");
+
+                    Log.d("HomeFragment", String.format("Ingredient from JSON - Name: %s, Quantity: %.2f, Unit: %s, Price: %.2f, Type: %s",
+                            name, quantity, unit, price, type));
+                    
+                    // Create ingredient map with explicit type casting
+                    ingredient.put("name", name);
+                    ingredient.put("quantity", quantity);
+                    ingredient.put("unit", unit);
+                    ingredient.put("price", price);  // Store as double
+                    ingredient.put("type", type);
+                    ingredientsList.add(ingredient);
+                    
+                    // Create display string
+                    String displayString = quantity > 0 ? String.format("%.1f %s %s", quantity, unit, name) : name;
+                    ingredientsDisplay.add(displayString);
+                    
+                    Log.d("HomeFragment", "Created ingredient map: " + ingredient);
+                }
+
+                recipe.setIngredientsList(ingredientsList);
+                String[] ingredientsDisplayArray = new String[ingredientsDisplay.size()];
+                ingredientsDisplay.toArray(ingredientsDisplayArray);
+                recipe.setIngredients(ingredientsDisplayArray);
+
+                // Parse instructions
+                JSONArray instructionsArray = recipeJson.getJSONArray("instructions");
+                List<String> instructionsList = new ArrayList<>();
+                for (int j = 0; j < instructionsArray.length(); j++) {
+                    instructionsList.add(instructionsArray.getString(j));
+                }
+                recipe.setInstructions(instructionsList.toArray(new String[0]));
+
+                recipes.add(recipe);
+                
+                Log.d("HomeFragment", "Added recipe with ingredients: " + ingredientsList);
+            }
+            
+            recipeAdapter.notifyDataSetChanged();
+
+            if (recipes.isEmpty() && getView() != null) {
+                Snackbar.make(getView(), "No featured recipes available", Snackbar.LENGTH_SHORT).show();
+            }
+            
+        } catch (IOException | JSONException e) {
+            Log.e("HomeFragment", "Error loading featured recipes", e);
+            if (getView() != null) {
+                Snackbar.make(getView(), "Error loading featured recipes: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
             }
         }
     }
@@ -344,9 +458,8 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (!documentSnapshot.exists()) {
-                        // Convert arrays to Lists for Firestore
-                        List<String> ingredientsList = Arrays.asList(recipe.getIngredients());
-                        List<String> instructionsList = Arrays.asList(recipe.getInstructions());
+                        // Get the full ingredient data
+                        List<Map<String, Object>> ingredientsList = recipe.getIngredientsList();
                         
                         // Save the recipe to Firestore
                         Map<String, Object> recipeData = new HashMap<>();
@@ -357,7 +470,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                         recipeData.put("cookTime", recipe.getCookTime());
                         recipeData.put("servings", recipe.getServings());
                         recipeData.put("ingredients", ingredientsList);
-                        recipeData.put("instructions", instructionsList);
+                        recipeData.put("instructions", Arrays.asList(recipe.getInstructions()));
                         recipeData.put("category", recipe.getCategory());
                         recipeData.put("calories", recipe.getCalories());
                         recipeData.put("totalPrice", recipe.getTotalPrice());
@@ -367,7 +480,12 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 .document(recipe.getId())
                                 .set(recipeData)
                                 .addOnSuccessListener(aVoid -> {
-                                    navigateToRecipeDetails(recipe.getId());
+                                    // After saving, navigate to recipe details
+                                    Bundle bundle = new Bundle();
+                                    bundle.putString("recipeId", recipe.getId());
+                                    bundle.putBoolean("fromMeals", false);
+                                    Navigation.findNavController(requireView())
+                                            .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
                                 })
                                 .addOnFailureListener(e -> {
                                     if (getView() != null) {
@@ -375,7 +493,12 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                     }
                                 });
                     } else {
-                        navigateToRecipeDetails(recipe.getId());
+                        // Recipe exists, just navigate to details
+                        Bundle bundle = new Bundle();
+                        bundle.putString("recipeId", recipe.getId());
+                        bundle.putBoolean("fromMeals", false);
+                        Navigation.findNavController(requireView())
+                                .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
                     }
                 })
                 .addOnFailureListener(e -> {
@@ -383,14 +506,6 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                         Snackbar.make(getView(), "Error checking recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
-    }
-
-    private void navigateToRecipeDetails(String recipeId) {
-        Bundle bundle = new Bundle();
-        bundle.putString("recipeId", recipeId);
-        bundle.putBoolean("fromMeals", false);
-        Navigation.findNavController(requireView())
-                .navigate(R.id.action_navigation_home_to_recipeDetailsFragment, bundle);
     }
 
     private void showDaySelectionDialog(Recipe recipe) {
@@ -431,12 +546,21 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (!documentSnapshot.exists()) {
-                        // Convert arrays to Lists for Firestore
-                        List<String> ingredientsList = Arrays.asList(recipe.getIngredients());
-                        List<String> instructionsList = Arrays.asList(recipe.getInstructions());
+                        Log.d("HomeFragment", "Saving recipe to Firestore: " + recipe.getName());
+                        
+                        // Get the full ingredient data
+                        List<Map<String, Object>> ingredientsList = recipe.getIngredientsList();
+                        
+                        Log.d("HomeFragment", "Ingredients being saved to Firestore:");
+                        for (Map<String, Object> ingredient : ingredientsList) {
+                            Log.d("HomeFragment", String.format("Ingredient - Name: %s, Price: %s, Type: %s",
+                                    ingredient.get("name"),
+                                    ingredient.get("price"),
+                                    ingredient.get("type")));
+                        }
                         
                         // Save the recipe to Firestore
-                        java.util.Map<String, Object> recipeData = new java.util.HashMap<>();
+                        Map<String, Object> recipeData = new HashMap<>();
                         recipeData.put("id", recipe.getId());
                         recipeData.put("name", recipe.getName());
                         recipeData.put("description", recipe.getDescription());
@@ -444,7 +568,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                         recipeData.put("cookTime", recipe.getCookTime());
                         recipeData.put("servings", recipe.getServings());
                         recipeData.put("ingredients", ingredientsList);
-                        recipeData.put("instructions", instructionsList);
+                        recipeData.put("instructions", Arrays.asList(recipe.getInstructions()));
                         recipeData.put("category", recipe.getCategory());
                         recipeData.put("calories", recipe.getCalories());
                         recipeData.put("totalPrice", recipe.getTotalPrice());
@@ -454,20 +578,21 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 .document(recipe.getId())
                                 .set(recipeData)
                                 .addOnSuccessListener(aVoid -> {
-                                    // After saving the recipe, add it to the meal plan
+                                    Log.d("HomeFragment", "Successfully saved recipe to Firestore");
                                     addToMealPlan(recipe.getId(), userId, day);
                                 })
                                 .addOnFailureListener(e -> {
+                                    Log.e("HomeFragment", "Error saving recipe", e);
                                     if (getView() != null) {
                                         Snackbar.make(getView(), "Error saving recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                                     }
                                 });
                     } else {
-                        // Recipe already exists, just add it to the meal plan
                         addToMealPlan(recipe.getId(), userId, day);
                     }
                 })
                 .addOnFailureListener(e -> {
+                    Log.e("HomeFragment", "Error checking recipe", e);
                     if (getView() != null) {
                         Snackbar.make(getView(), "Error checking recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
@@ -571,68 +696,241 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     }
 
     private void addIngredientsToGroceryList(String recipeId, String userId) {
+        Log.d("HomeFragment", "Adding ingredients to grocery list for recipe: " + recipeId);
+        
         // Get recipe ingredients
         db.collection("recipes").document(recipeId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        // Get ingredients as List<String>
-                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
-                        String recipeName = documentSnapshot.getString("name");
+                        Log.d("HomeFragment", "Recipe document exists");
+                        Log.d("HomeFragment", "Recipe name: " + documentSnapshot.getString("name"));
+                        Log.d("HomeFragment", "Is featured: " + (documentSnapshot.getString("id").startsWith("featured_")));
                         
-                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                        Object ingredientsObj = documentSnapshot.get("ingredients");
+                        Log.d("HomeFragment", "Raw ingredients data structure: " + ingredientsObj.getClass().getName());
+                        Log.d("HomeFragment", "Raw ingredients data: " + ingredientsObj);
+                        
+                        final List<Map<String, Object>> finalIngredients = new ArrayList<>();
+                        
+                        // Handle both List<String> and List<Map> formats
+                        if (ingredientsObj instanceof List<?>) {
+                            List<?> ingredientsList = (List<?>) ingredientsObj;
+                            Log.d("HomeFragment", "Ingredients list size: " + ingredientsList.size());
+                            
+                            if (!ingredientsList.isEmpty()) {
+                                Object firstItem = ingredientsList.get(0);
+                                Log.d("HomeFragment", "First ingredient class type: " + firstItem.getClass().getName());
+                                Log.d("HomeFragment", "First ingredient data: " + firstItem);
+                                
+                                if (firstItem instanceof String) {
+                                    Log.d("HomeFragment", "Processing string format ingredients (likely custom recipe)");
+                                    // Convert List<String> to List<Map>
+                                    for (Object ing : ingredientsList) {
+                                        String ingStr = (String) ing;
+                                        Log.d("HomeFragment", "Processing ingredient string: " + ingStr);
+                                        
+                                        // Parse the string format "quantity unit name"
+                                        String[] parts = ingStr.split(" ", 3);
+                                        Map<String, Object> ingMap = new HashMap<>();
+                                        if (parts.length >= 3) {
+                                            try {
+                                                ingMap.put("quantity", Double.parseDouble(parts[0]));
+                                                ingMap.put("unit", parts[1]);
+                                                ingMap.put("name", parts[2]);
+                                            } catch (NumberFormatException e) {
+                                                ingMap.put("name", ingStr);
+                                                ingMap.put("quantity", 1.0);
+                                                ingMap.put("unit", "unit");
+                                            }
+                                        } else {
+                                            ingMap.put("name", ingStr);
+                                            ingMap.put("quantity", 1.0);
+                                            ingMap.put("unit", "unit");
+                                        }
+                                        finalIngredients.add(ingMap);
+                                        Log.d("HomeFragment", "Created ingredient map from string: " + ingMap);
+                                    }
+                                } else if (firstItem instanceof Map) {
+                                    Log.d("HomeFragment", "Processing map format ingredients (likely featured recipe)");
+                                    // Already in Map format
+                                    List<Map<String, Object>> mapList = (List<Map<String, Object>>) ingredientsObj;
+                                    for (Map<String, Object> ing : mapList) {
+                                        Log.d("HomeFragment", "Processing ingredient map: " + ing);
+                                        Log.d("HomeFragment", "Original price value: " + ing.get("price") + 
+                                                            " (Type: " + (ing.get("price") != null ? ing.get("price").getClass().getName() : "null") + ")");
+                                        
+                                        // Create a new map to avoid reference issues
+                                        Map<String, Object> newIng = new HashMap<>();
+                                        // Copy all fields
+                                        for (Map.Entry<String, Object> entry : ing.entrySet()) {
+                                            if (entry.getValue() != null) {
+                                                if (entry.getKey().equals("price")) {
+                                                    // Ensure price is stored as Double
+                                                    Object priceValue = entry.getValue();
+                                                    if (priceValue instanceof Number) {
+                                                        double price = ((Number) priceValue).doubleValue();
+                                                        newIng.put("price", price);
+                                                        Log.d("HomeFragment", "Converted price to double: " + price);
+                                                    } else if (priceValue instanceof String) {
+                                                        try {
+                                                            double price = Double.parseDouble((String) priceValue);
+                                                            newIng.put("price", price);
+                                                            Log.d("HomeFragment", "Parsed price from string: " + price);
+                                                        } catch (NumberFormatException e) {
+                                                            Log.e("HomeFragment", "Error parsing price from string: " + priceValue);
+                                                            newIng.put("price", 0.0);
+                                                        }
+                                                    }
+                                                } else {
+                                                    newIng.put(entry.getKey(), entry.getValue());
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Ensure price exists
+                                        if (!newIng.containsKey("price")) {
+                                            newIng.put("price", 0.0);
+                                            Log.d("HomeFragment", "Added default price: 0.0");
+                                        }
+                                        
+                                        Log.d("HomeFragment", "Final ingredient map: " + newIng);
+                                        finalIngredients.add(newIng);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Log.d("HomeFragment", "Final ingredients list size: " + finalIngredients.size());
+                        
+                        if (!finalIngredients.isEmpty()) {
                             // Reference to user's grocery list document
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
-                            // Create a map to store all ingredient updates
-                            Map<String, Object> updates = new HashMap<>();
+                            // Get the current grocery list first
+                            groceryListRef.get().addOnSuccessListener(groceryDoc -> {
+                                Map<String, Object> existingList = groceryDoc.exists() ? groceryDoc.getData() : new HashMap<>();
+                                Map<String, Object> updates = new HashMap<>();
 
-                            // Process each ingredient
-                            for (String ingredient : ingredients) {
-                                // Create a unique ID for the ingredient using recipe name and ingredient
-                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
-                                
-                                // Create ingredient data
-                                Map<String, Object> ingredientData = new HashMap<>();
-                                ingredientData.put("name", ingredient);
-                                ingredientData.put("category", determineIngredientType(ingredient));
-                                ingredientData.put("bought", false);
-                                ingredientData.put("selectedForSms", false);
-                                ingredientData.put("price", 0.0); // Default price
-                                ingredientData.put("quantity", 1.0); // Default quantity
-                                ingredientData.put("unit", "g"); // Default unit
-                                ingredientData.put("userId", userId);
-                                
-                                // Add to updates map
-                                updates.put(ingredientId, ingredientData);
-                            }
+                                // Process each ingredient
+                                for (Map<String, Object> ingredient : finalIngredients) {
+                                    String name = (String) ingredient.get("name");
+                                    if (name != null) {
+                                        // Create a unique ID for the ingredient
+                                        String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                                        Log.d("HomeFragment", "Processing ingredient: " + name + " (ID: " + ingredientId + ")");
+                                        Log.d("HomeFragment", "Original ingredient data: " + ingredient);
+                                        
+                                        // Check if ingredient already exists
+                                        if (existingList.containsKey(ingredientId)) {
+                                            // Update existing ingredient
+                                            Map<String, Object> existingIngredient = (Map<String, Object>) existingList.get(ingredientId);
+                                            Log.d("HomeFragment", "Existing ingredient data: " + existingIngredient);
+                                            
+                                            double existingQuantity = existingIngredient.containsKey("quantity") ? 
+                                                ((Number) existingIngredient.get("quantity")).doubleValue() : 0.0;
+                                            double newQuantity = ingredient.containsKey("quantity") ? 
+                                                ((Number) ingredient.get("quantity")).doubleValue() : 1.0;
+                                            
+                                            // Create new map to avoid reference issues
+                                            Map<String, Object> updatedIngredient = new HashMap<>();
+                                            // Copy all existing fields
+                                            updatedIngredient.putAll(existingIngredient);
+                                            // Update quantity
+                                            updatedIngredient.put("quantity", existingQuantity + newQuantity);
+                                            
+                                            // Handle price: prefer the new price if it exists and is greater than 0
+                                            if (ingredient.containsKey("price")) {
+                                                Object priceObj = ingredient.get("price");
+                                                double newPrice = 0.0;
+                                                if (priceObj instanceof Number) {
+                                                    newPrice = ((Number) priceObj).doubleValue();
+                                                } else if (priceObj instanceof String) {
+                                                    try {
+                                                        newPrice = Double.parseDouble((String) priceObj);
+                                                    } catch (NumberFormatException e) {
+                                                        Log.e("HomeFragment", "Error parsing price: " + priceObj);
+                                                    }
+                                                }
+                                                if (newPrice > 0) {
+                                                    updatedIngredient.put("price", newPrice);
+                                                    Log.d("HomeFragment", "Updated price to: " + newPrice);
+                                                }
+                                            }
+                                            
+                                            updates.put(ingredientId, updatedIngredient);
+                                            Log.d("HomeFragment", "Updated ingredient data: " + updatedIngredient);
+                                        } else {
+                                            // Add new ingredient
+                                            Map<String, Object> ingredientData = new HashMap<>();
+                                            // Copy all fields from original ingredient
+                                            ingredientData.putAll(ingredient);
+                                            // Add additional fields
+                                            ingredientData.put("bought", false);
+                                            ingredientData.put("selectedForSms", false);
+                                            ingredientData.put("userId", userId);
+                                            
+                                            // Ensure required fields exist
+                                            if (!ingredientData.containsKey("quantity")) {
+                                                ingredientData.put("quantity", 1.0);
+                                            }
+                                            if (!ingredientData.containsKey("unit")) {
+                                                ingredientData.put("unit", "unit");
+                                            }
+                                            if (!ingredientData.containsKey("type")) {
+                                                ingredientData.put("type", determineIngredientType(name));
+                                            }
+                                            
+                                            // Handle price: ensure it's stored as Double
+                                            if (ingredient.containsKey("price")) {
+                                                Object priceObj = ingredient.get("price");
+                                                double price = 0.0;
+                                                if (priceObj instanceof Number) {
+                                                    price = ((Number) priceObj).doubleValue();
+                                                } else if (priceObj instanceof String) {
+                                                    try {
+                                                        price = Double.parseDouble((String) priceObj);
+                                                    } catch (NumberFormatException e) {
+                                                        Log.e("HomeFragment", "Error parsing price: " + priceObj);
+                                                    }
+                                                }
+                                                ingredientData.put("price", price);
+                                                Log.d("HomeFragment", "Set price to: " + price);
+                                            } else {
+                                                ingredientData.put("price", 0.0);
+                                                Log.d("HomeFragment", "Set default price: 0.0");
+                                            }
+                                            
+                                            updates.put(ingredientId, ingredientData);
+                                            Log.d("HomeFragment", "New ingredient data: " + ingredientData);
+                                        }
+                                    }
+                                }
 
-                            // Update the grocery list document with all ingredients at once
-                            groceryListRef.set(updates, SetOptions.merge())
-                                .addOnSuccessListener(aVoid -> {
-                                    Log.d("HomeFragment", "Successfully added ingredients to grocery list");
-                                    if (getView() != null) {
-                                        Snackbar.make(getView(), 
-                                            "Added ingredients to grocery list", 
-                                            Snackbar.LENGTH_SHORT).show();
-                                    }
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e("HomeFragment", "Error updating grocery list", e);
-                                    if (getView() != null) {
-                                        Snackbar.make(getView(), 
-                                            "Error updating grocery list: " + e.getMessage(), 
-                                            Snackbar.LENGTH_LONG).show();
-                                    }
-                                });
+                                // Update the grocery list with merged ingredients
+                                if (!updates.isEmpty()) {
+                                    Log.d("HomeFragment", "Final updates to be applied: " + updates);
+                                    groceryListRef.set(updates, SetOptions.merge())
+                                        .addOnSuccessListener(aVoid -> {
+                                            Log.d("HomeFragment", "Successfully added ingredients to grocery list");
+                                            if (getView() != null) {
+                                                Snackbar.make(getView(), "Added ingredients to grocery list", Snackbar.LENGTH_SHORT).show();
+                                            }
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            Log.e("HomeFragment", "Error updating grocery list", e);
+                                            if (getView() != null) {
+                                                Snackbar.make(getView(), "Error updating grocery list: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                                            }
+                                        });
+                                }
+                            });
                         }
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.e("HomeFragment", "Error getting recipe ingredients", e);
                     if (getView() != null) {
-                        Snackbar.make(getView(), 
-                            "Error getting recipe ingredients: " + e.getMessage(), 
-                            Snackbar.LENGTH_LONG).show();
+                        Snackbar.make(getView(), "Error getting recipe ingredients: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
     }
@@ -642,32 +940,65 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         db.collection("recipes").document(recipeId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
-                        String recipeName = documentSnapshot.getString("name");
+                        Object ingredientsObj = documentSnapshot.get("ingredients");
+                        List<String> ingredientNames = new ArrayList<>();
                         
-                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
+                        // Handle both List<String> and List<Map> formats
+                        if (ingredientsObj instanceof List<?>) {
+                            List<?> ingredientsList = (List<?>) ingredientsObj;
+                            if (!ingredientsList.isEmpty()) {
+                                if (ingredientsList.get(0) instanceof String) {
+                                    // If ingredients are stored as strings
+                                    for (Object ing : ingredientsList) {
+                                        ingredientNames.add((String) ing);
+                                    }
+                                } else if (ingredientsList.get(0) instanceof Map) {
+                                    // If ingredients are stored as maps
+                                    List<Map<String, Object>> ingredients = (List<Map<String, Object>>) ingredientsObj;
+                                    for (Map<String, Object> ingredient : ingredients) {
+                                        String name = (String) ingredient.get("name");
+                                        if (name != null) {
+                                            ingredientNames.add(name);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!ingredientNames.isEmpty()) {
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
                             // Create a map of fields to delete
                             Map<String, Object> updates = new HashMap<>();
-                            for (String ingredient : ingredients) {
-                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                            for (String name : ingredientNames) {
+                                String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
                                 updates.put(ingredientId, FieldValue.delete());
                             }
 
                             // Remove the ingredients from the grocery list
-                            groceryListRef.update(updates)
-                                .addOnSuccessListener(aVoid -> {
-                                    Log.d("HomeFragment", "Successfully removed ingredients from grocery list");
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e("HomeFragment", "Error removing ingredients from grocery list", e);
-                                });
+                            if (!updates.isEmpty()) {
+                                groceryListRef.update(updates)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d("HomeFragment", "Successfully removed ingredients from grocery list");
+                                        if (getView() != null) {
+                                            Snackbar.make(getView(), "Removed ingredients from grocery list", Snackbar.LENGTH_SHORT).show();
+                                        }
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e("HomeFragment", "Error removing ingredients from grocery list", e);
+                                        if (getView() != null) {
+                                            Snackbar.make(getView(), "Error removing ingredients from grocery list", Snackbar.LENGTH_LONG).show();
+                                        }
+                                    });
+                            }
                         }
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.e("HomeFragment", "Error getting recipe ingredients for removal", e);
+                    if (getView() != null) {
+                        Snackbar.make(getView(), "Error getting recipe ingredients", Snackbar.LENGTH_LONG).show();
+                    }
                 });
     }
 

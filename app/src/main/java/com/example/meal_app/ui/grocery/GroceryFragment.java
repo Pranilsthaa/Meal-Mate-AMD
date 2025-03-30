@@ -150,7 +150,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void loadGroceryItems() {
-        String userId = auth.getCurrentUser().getUid();
+            String userId = auth.getCurrentUser().getUid();
         Log.d("GroceryFragment", "Loading grocery items for userId: " + userId);
 
         db.collection("groceryLists").document(userId).get()
@@ -176,9 +176,9 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                                     // Skip if required fields are missing
                                     if (!ingredientData.containsKey("name")) {
                                         Log.e("GroceryFragment", "Missing name for item: " + entry.getKey());
-                                        continue;
-                                    }
-                                    
+                                continue;
+                            }
+
                                     GroceryItem ingredient = new GroceryItem();
                                     ingredient.setId(entry.getKey());
                                     ingredient.setName((String) ingredientData.get("name"));
@@ -270,12 +270,12 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         // Update adapter with the new items
         if (adapter != null) {
             Log.d("GroceryFragment", "Setting up RecyclerView");
-            allItems = items;
+                    allItems = items;
             filteredItems = new ArrayList<>(items);
             adapter.updateData(filteredItems);
-            
+
             // Update totals and progress
-            updateTotals();
+                    updateTotals();
             updateProgress();
             
             // Show/hide views based on whether we have items

@@ -29,6 +29,9 @@ public class LoginActivity extends AppCompatActivity {
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        // Set status bar color to gradient_start
+        getWindow().setStatusBarColor(getResources().getColor(R.color.gradient_start));
+
         db = FirebaseFirestore.getInstance();
         sessionManager = new SessionManager(this);
         mAuth = FirebaseAuth.getInstance();

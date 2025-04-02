@@ -31,8 +31,11 @@ public class SignupActivity extends AppCompatActivity {
         binding = ActivitySignupBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        mAuth = FirebaseAuth.getInstance();
+        // Set status bar color to gradient_start
+        getWindow().setStatusBarColor(getResources().getColor(R.color.gradient_start));
+
         db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();

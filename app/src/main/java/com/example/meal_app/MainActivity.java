@@ -21,11 +21,16 @@ import com.example.meal_app.utils.SessionManager;
 
 import androidx.core.content.ContextCompat;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
     private SessionManager sessionManager;
     private NavController navController;
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +42,12 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().hide();
         }
 
+        // Set status bar color to black
+        getWindow().setStatusBarColor(getResources().getColor(R.color.black));
+
+        // Initialize Firebase instances
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
         sessionManager = new SessionManager(this);
 
         // Check if user is logged in

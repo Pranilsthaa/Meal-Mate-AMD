@@ -461,6 +461,23 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                         // Get the full ingredient data
                         List<Map<String, Object>> ingredientsList = recipe.getIngredientsList();
                         
+                        // Convert ingredients to display format
+                        List<String> ingredientsDisplay = new ArrayList<>();
+                        for (Map<String, Object> ingredient : ingredientsList) {
+                            String name = (String) ingredient.get("name");
+                            Object quantityObj = ingredient.get("quantity");
+                            String unit = (String) ingredient.get("unit");
+                            
+                            double quantity = 1.0;
+                            if (quantityObj instanceof Number) {
+                                quantity = ((Number) quantityObj).doubleValue();
+                            }
+                            
+                            String displayString = quantity > 0 && unit != null ? 
+                                String.format("%.1f %s %s", quantity, unit, name) : name;
+                            ingredientsDisplay.add(displayString);
+                        }
+                        
                         // Save the recipe to Firestore
                         Map<String, Object> recipeData = new HashMap<>();
                         recipeData.put("id", recipe.getId());
@@ -469,7 +486,8 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                         recipeData.put("imageUrl", recipe.getImageUrl());
                         recipeData.put("cookTime", recipe.getCookTime());
                         recipeData.put("servings", recipe.getServings());
-                        recipeData.put("ingredients", ingredientsList);
+                        recipeData.put("ingredients", ingredientsDisplay);  // Save display format
+                        recipeData.put("ingredientsList", ingredientsList); // Save full data
                         recipeData.put("instructions", Arrays.asList(recipe.getInstructions()));
                         recipeData.put("category", recipe.getCategory());
                         recipeData.put("calories", recipe.getCalories());

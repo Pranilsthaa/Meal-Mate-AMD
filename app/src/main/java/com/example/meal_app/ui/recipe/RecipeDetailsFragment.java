@@ -140,11 +140,37 @@ public class RecipeDetailsFragment extends Fragment {
             // Setup ingredients list with type checking
             RecyclerView ingredientsRecyclerView = root.findViewById(R.id.ingredientsRecyclerView);
             Object ingredientsObj = document.get("ingredients");
+            List<String> displayIngredients = new ArrayList<>();
+            
             if (ingredientsObj instanceof List) {
-                List<String> ingredients = (List<String>) ingredientsObj;
-                if (ingredients != null && !ingredients.isEmpty()) {
+                List<?> ingredientsList = (List<?>) ingredientsObj;
+                if (ingredientsList != null && !ingredientsList.isEmpty()) {
+                    for (Object ingredient : ingredientsList) {
+                        if (ingredient instanceof String) {
+                            // If it's already a string, add it directly
+                            displayIngredients.add((String) ingredient);
+                        } else if (ingredient instanceof Map) {
+                            // If it's a map, format it as a string
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
+                            String name = (String) ingredientMap.get("name");
+                            Object quantityObj = ingredientMap.get("quantity");
+                            String unit = (String) ingredientMap.get("unit");
+                            
+                            if (name != null) {
+                                double quantity = 1.0;
+                                if (quantityObj instanceof Number) {
+                                    quantity = ((Number) quantityObj).doubleValue();
+                                }
+                                
+                                String displayString = quantity > 0 && unit != null ? 
+                                    String.format("%.1f %s %s", quantity, unit, name) : name;
+                                displayIngredients.add(displayString);
+                            }
+                        }
+                    }
                     ingredientsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-                    ingredientsRecyclerView.setAdapter(new IngredientsAdapter(ingredients));
+                    ingredientsRecyclerView.setAdapter(new IngredientsAdapter(displayIngredients));
                 } else {
                     handleError("ingredients list is empty or null");
                 }

@@ -18,6 +18,8 @@ import com.example.meal_app.model.Recipe;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class MealDayAdapter extends RecyclerView.Adapter<MealDayAdapter.ViewHolder> {
     private final List<MealDay> mealDays;
@@ -81,60 +83,100 @@ public class MealDayAdapter extends RecyclerView.Adapter<MealDayAdapter.ViewHold
 
             // Show/hide loading state
             boolean isLoading = loadingStates.containsKey(mealDay.getDay()) && loadingStates.get(mealDay.getDay());
-            loadingOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-            mealsContainer.setAlpha(isLoading ? 0.5f : 1.0f);
-
-            if (isLoading) {
-                return;
-            }
 
             List<Recipe> recipes = mealDay.getRecipes();
-            if (recipes.isEmpty()) {
+            if (recipes.isEmpty() && !isLoading) {
                 // Show empty state
                 View emptyView = LayoutInflater.from(itemView.getContext())
                         .inflate(R.layout.item_empty_meal_day, mealsContainer, false);
                 emptyView.setOnClickListener(v -> listener.onMealDayClick(mealDay.getDay()));
                 mealsContainer.addView(emptyView);
             } else {
-                // Add recipe views
+                // Group recipes by category
+                Map<String, List<Recipe>> categorizedRecipes = new HashMap<>();
                 for (Recipe recipe : recipes) {
-                    View recipeView = LayoutInflater.from(itemView.getContext())
-                            .inflate(R.layout.item_assigned_meal, mealsContainer, false);
-
-                    ImageView recipeImage = recipeView.findViewById(R.id.recipeImage);
-                    TextView recipeName = recipeView.findViewById(R.id.recipeName);
-                    TextView cookingTime = recipeView.findViewById(R.id.cookingTime);
-                    TextView servings = recipeView.findViewById(R.id.servings);
-                    ImageButton removeButton = recipeView.findViewById(R.id.removeButton);
-
-                    recipeName.setText(recipe.getName());
-                    cookingTime.setText(recipe.getCookTime() + " min");
-                    servings.setText(recipe.getServings() + " servings");
-
-                    if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
-                        Glide.with(itemView.getContext())
-                                .load(recipe.getImageUrl())
-                                .placeholder(R.drawable.placeholder_recipe)
-                                .error(R.drawable.placeholder_recipe)
-                                .centerCrop()
-                                .into(recipeImage);
-                    } else {
-                        recipeImage.setImageResource(R.drawable.placeholder_recipe);
+                    String category = recipe.getCategory() != null ? recipe.getCategory() : "Other";
+                    if (!categorizedRecipes.containsKey(category)) {
+                        categorizedRecipes.put(category, new ArrayList<>());
                     }
-
-                    removeButton.setOnClickListener(v -> listener.onRemoveMealClick(mealDay.getDay(), recipe));
-
-                    // Add click listener for recipe details
-                    recipeView.setOnClickListener(v -> listener.onRecipeClick(recipe));
-
-                    mealsContainer.addView(recipeView);
+                    categorizedRecipes.get(category).add(recipe);
                 }
 
-                // Add "Add Another Meal" button
-                View addButton = LayoutInflater.from(itemView.getContext())
-                        .inflate(R.layout.item_add_meal_button, mealsContainer, false);
-                addButton.setOnClickListener(v -> listener.onMealDayClick(mealDay.getDay()));
-                mealsContainer.addView(addButton);
+                // Sort categories alphabetically
+                List<String> categories = new ArrayList<>(categorizedRecipes.keySet());
+                Collections.sort(categories);
+
+                // Add recipes by category
+                for (String category : categories) {
+                    // Add category header
+                    View categoryHeader = LayoutInflater.from(itemView.getContext())
+                            .inflate(R.layout.item_category_header, mealsContainer, false);
+                    TextView categoryTitle = categoryHeader.findViewById(R.id.categoryTitle);
+                    categoryTitle.setText(category);
+                    mealsContainer.addView(categoryHeader);
+
+                    // Add recipes for this category
+                    for (Recipe recipe : categorizedRecipes.get(category)) {
+                        View recipeView = LayoutInflater.from(itemView.getContext())
+                                .inflate(R.layout.item_assigned_meal, mealsContainer, false);
+
+                        ImageView recipeImage = recipeView.findViewById(R.id.recipeImage);
+                        TextView recipeName = recipeView.findViewById(R.id.recipeName);
+                        TextView cookingTime = recipeView.findViewById(R.id.cookingTime);
+                        TextView servings = recipeView.findViewById(R.id.servings);
+                        ImageButton removeButton = recipeView.findViewById(R.id.removeButton);
+                        View loadingOverlay = recipeView.findViewById(R.id.loadingOverlay);
+
+                        recipeName.setText(recipe.getName());
+                        cookingTime.setText(recipe.getCookTime() + " min");
+                        servings.setText(recipe.getServings() + " servings");
+
+                        if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
+                            Glide.with(itemView.getContext())
+                                    .load(recipe.getImageUrl())
+                                    .placeholder(R.drawable.placeholder_recipe)
+                                    .error(R.drawable.placeholder_recipe)
+                                    .centerCrop()
+                                    .into(recipeImage);
+                        } else {
+                            recipeImage.setImageResource(R.drawable.placeholder_recipe);
+                        }
+
+                        // Handle loading state for individual cards
+                        if (isLoading) {
+                            recipeView.setAlpha(0.5f);
+                            loadingOverlay.setVisibility(View.VISIBLE);
+                            removeButton.setEnabled(false);
+                            recipeView.setEnabled(false);
+                        } else {
+                            recipeView.setAlpha(1.0f);
+                            loadingOverlay.setVisibility(View.GONE);
+                            removeButton.setEnabled(true);
+                            recipeView.setEnabled(true);
+                            
+                            removeButton.setOnClickListener(v -> {
+                                // Show loading state for this card only
+                                loadingOverlay.setVisibility(View.VISIBLE);
+                                recipeView.setAlpha(0.5f);
+                                removeButton.setEnabled(false);
+                                recipeView.setEnabled(false);
+                                
+                                listener.onRemoveMealClick(mealDay.getDay(), recipe);
+                            });
+                            recipeView.setOnClickListener(v -> listener.onRecipeClick(recipe));
+                        }
+
+                        mealsContainer.addView(recipeView);
+                    }
+                }
+
+                // Add "Add Another Meal" button if not in loading state
+                if (!isLoading) {
+                    View addButton = LayoutInflater.from(itemView.getContext())
+                            .inflate(R.layout.item_add_meal_button, mealsContainer, false);
+                    addButton.setOnClickListener(v -> listener.onMealDayClick(mealDay.getDay()));
+                    mealsContainer.addView(addButton);
+                }
             }
         }
     }

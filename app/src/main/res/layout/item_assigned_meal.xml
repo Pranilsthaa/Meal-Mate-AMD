@@ -1,70 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical">
+    android:layout_marginVertical="4dp"
+    android:layout_marginHorizontal="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="#2E2E2E"
+    android:clickable="true"
+    android:focusable="true"
+    app:rippleColor="#33FFFFFF"
+    android:foreground="?attr/selectableItemBackground">
 
-    <ImageView
-        android:id="@+id/recipeImage"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:scaleType="centerCrop"
-        android:background="@drawable/rounded_image_background"/>
-
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginStart="12dp">
-
-        <TextView
-            android:id="@+id/recipeName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Vegetable Quinoa Bowl"
-            android:textColor="@color/white"
-            android:textSize="16sp"/>
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:padding="12dp">
 
-            <TextView
-                android:id="@+id/cookingTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="25 min"
-                android:textColor="@color/gray"
-                android:textSize="12sp"/>
+            <ImageView
+                android:id="@+id/recipeImage"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:scaleType="centerCrop"
+                android:background="@drawable/rounded_corners"
+                android:src="@drawable/placeholder_recipe"/>
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text=" • "
-                android:textColor="@color/gray"
-                android:textSize="12sp"/>
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp"
+                android:layout_gravity="center_vertical">
 
-            <TextView
-                android:id="@+id/servings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2 servings"
-                android:textColor="@color/gray"
-                android:textSize="12sp"/>
+                <TextView
+                    android:id="@+id/recipeName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    android:maxLines="2"
+                    android:ellipsize="end"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:id="@+id/cookingTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="@color/gray"
+                        android:drawableStart="@drawable/ic_time"
+                        android:drawableTint="@color/gray"
+                        android:drawablePadding="4dp"
+                        android:layout_marginEnd="12dp"/>
+
+                    <TextView
+                        android:id="@+id/servings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="@color/gray"
+                        android:drawableStart="@drawable/ic_servings"
+                        android:drawableTint="@color/gray"
+                        android:drawablePadding="4dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/removeButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_remove"
+                android:tint="@color/gray"
+                android:padding="4dp"/>
+
         </LinearLayout>
-    </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/removeButton"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@drawable/ic_close"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:tint="@color/gray"/>
+        <!-- Loading Overlay -->
+        <FrameLayout
+            android:id="@+id/loadingOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#33000000"
+            android:visibility="gone">
 
-</LinearLayout> 
+            <ProgressBar
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/orange"/>
+        </FrameLayout>
+
+    </FrameLayout>
+</com.google.android.material.card.MaterialCardView> 

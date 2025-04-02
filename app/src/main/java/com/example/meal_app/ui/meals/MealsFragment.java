@@ -157,8 +157,12 @@ public class MealsFragment extends Fragment {
             return;
 
         String userId = auth.getCurrentUser().getUid();
-        binding.progressBar.setVisibility(View.VISIBLE);
-        mealsRecyclerView.setVisibility(View.GONE);
+        
+        // Only show full-screen loader if the RecyclerView is not visible (initial load)
+        if (mealsRecyclerView.getVisibility() != View.VISIBLE) {
+            binding.progressBar.setVisibility(View.VISIBLE);
+            mealsRecyclerView.setVisibility(View.GONE);
+        }
 
         db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
@@ -255,6 +259,9 @@ public class MealsFragment extends Fragment {
 
     private void assignMealToDay(String day, String recipeId) {
         String userId = auth.getCurrentUser().getUid();
+        MealDay mealDay = findMealDayByName(day);
+        
+        // Show loading state only for the affected day
         adapter.setDayLoading(day, true);
 
         db.collection("meal_plans")
@@ -272,7 +279,12 @@ public class MealsFragment extends Fragment {
                         db.collection("meal_plans")
                                 .add(mealPlan)
                                 .addOnSuccessListener(documentReference -> {
-                                    loadMealPlan();
+                                    // Find the recipe and add it to the local data
+                                    Recipe recipe = findRecipeById(recipeId);
+                                    if (recipe != null && mealDay != null) {
+                                        mealDay.addRecipe(recipe);
+                                        adapter.notifyDataSetChanged();
+                                    }
                                     adapter.setDayLoading(day, false);
                                     // Add ingredients to grocery list
                                     addIngredientsToGroceryList(recipeId, userId);
@@ -284,27 +296,34 @@ public class MealsFragment extends Fragment {
                     } else {
                         // Update existing meal plan
                         DocumentSnapshot document = queryDocumentSnapshots.getDocuments().get(0);
-                        List<String> existingRecipeIds = (List<String>) document.get("recipeIds");
-                        List<String> updatedRecipeIds = new ArrayList<>();
-
-                        if (existingRecipeIds != null) {
-                            updatedRecipeIds.addAll(existingRecipeIds);
+                        List<String> recipeIds = (List<String>) document.get("recipeIds");
+                        if (recipeIds == null) {
+                            recipeIds = new ArrayList<>();
                         }
-                        updatedRecipeIds.add(recipeId);
 
-                        db.collection("meal_plans")
-                                .document(document.getId())
-                                .update("recipeIds", updatedRecipeIds)
-                                .addOnSuccessListener(aVoid -> {
-                                    loadMealPlan();
-                                    adapter.setDayLoading(day, false);
-                                    // Add ingredients to grocery list
-                                    addIngredientsToGroceryList(recipeId, userId);
-                                })
-                                .addOnFailureListener(e -> {
-                                    handleError("Error updating meal plan: " + e.getMessage());
-                                    adapter.setDayLoading(day, false);
-                                });
+                        if (!recipeIds.contains(recipeId)) {
+                            recipeIds.add(recipeId);
+                            db.collection("meal_plans")
+                                    .document(document.getId())
+                                    .update("recipeIds", recipeIds)
+                                    .addOnSuccessListener(aVoid -> {
+                                        // Find the recipe and add it to the local data
+                                        Recipe recipe = findRecipeById(recipeId);
+                                        if (recipe != null && mealDay != null) {
+                                            mealDay.addRecipe(recipe);
+                                            adapter.notifyDataSetChanged();
+                                        }
+                                        adapter.setDayLoading(day, false);
+                                        // Add ingredients to grocery list
+                                        addIngredientsToGroceryList(recipeId, userId);
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        handleError("Error updating meal plan: " + e.getMessage());
+                                        adapter.setDayLoading(day, false);
+                                    });
+                        } else {
+                            adapter.setDayLoading(day, false);
+                        }
                     }
                 })
                 .addOnFailureListener(e -> {
@@ -459,8 +478,9 @@ public class MealsFragment extends Fragment {
         String userId = auth.getCurrentUser().getUid();
         String day = mealDay.getDay();
 
-        // Show loading indicator for this day
-        adapter.setDayLoading(day, true);
+        // Remove the recipe locally first for immediate feedback
+        mealDay.removeRecipe(recipe);
+        adapter.notifyDataSetChanged();
 
         db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
@@ -474,31 +494,21 @@ public class MealsFragment extends Fragment {
                         if (recipeIds != null) {
                             recipeIds.remove(recipe.getId());
 
-                            // Remove ingredients from grocery list
-                            removeIngredientsFromGroceryList(recipe.getId(), userId);
-
-                            // Update the local MealDay object first
-                            mealDay.removeRecipe(recipe);
-                            adapter.notifyDataSetChanged();
-
-                            // Now update or delete the meal plan
                             if (recipeIds.isEmpty()) {
                                 // If no recipes left, delete the document
                                 db.collection("meal_plans")
                                         .document(document.getId())
                                         .delete()
                                         .addOnSuccessListener(aVoid -> {
-                                            // Refresh the UI after successful deletion
-                                            loadMealPlan();
                                             adapter.setDayLoading(day, false);
                                             if (getView() != null) {
                                                 Snackbar.make(getView(), "Recipe removed from " + day, Snackbar.LENGTH_SHORT).show();
                                             }
                                         })
                                         .addOnFailureListener(e -> {
-                                            handleError("Error deleting meal plan: " + e.getMessage());
+                                            handleError("Error removing meal plan: " + e.getMessage());
                                             adapter.setDayLoading(day, false);
-                                            // Revert local change if deletion failed
+                                            // Revert local change if update failed
                                             mealDay.addRecipe(recipe);
                                             adapter.notifyDataSetChanged();
                                         });
@@ -508,8 +518,6 @@ public class MealsFragment extends Fragment {
                                         .document(document.getId())
                                         .update("recipeIds", recipeIds)
                                         .addOnSuccessListener(aVoid -> {
-                                            // Refresh the UI after successful update
-                                            loadMealPlan();
                                             adapter.setDayLoading(day, false);
                                             if (getView() != null) {
                                                 Snackbar.make(getView(), "Recipe removed from " + day, Snackbar.LENGTH_SHORT).show();
@@ -529,6 +537,9 @@ public class MealsFragment extends Fragment {
                 .addOnFailureListener(e -> {
                     handleError("Error checking meal plan: " + e.getMessage());
                     adapter.setDayLoading(day, false);
+                    // Revert local change if update failed
+                    mealDay.addRecipe(recipe);
+                    adapter.notifyDataSetChanged();
                 });
     }
 

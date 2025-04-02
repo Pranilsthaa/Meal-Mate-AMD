@@ -22,4 +22,6 @@
     <color name="card_background">#1F1F1F</color>
     <color name="meal_plan_card_background">#2C2C2E</color>
     <color name="meal_plan_card_accent">#3A3A3C</color>
+    <color name="rounded_card_bg">#F7C42E</color>
+
 </resources>

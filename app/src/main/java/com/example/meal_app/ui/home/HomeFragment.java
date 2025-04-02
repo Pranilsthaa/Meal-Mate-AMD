@@ -44,6 +44,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.HashSet;
 import java.util.Set;
+import android.widget.ImageView;
 
 public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClickListener {
 
@@ -247,7 +248,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private void setupTodayMealPlan() {
         // Check if fragment is attached and binding is valid
         if (!isAdded() || binding == null) {
-            Log.e("HomeFragment", "Cannot setup meal plan - fragment not attached or binding is null");
+            Log.e("loghere", "Cannot setup meal plan - binding is null or fragment is not attached");
             return;
         }
 
@@ -256,11 +257,11 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         String today = days[calendar.get(Calendar.DAY_OF_WEEK) - 1];
         
-        Log.d("HomeFragment", "Today's day: " + today);
+        Log.d("loghere", "Today's day: " + today);
 
         // Query meal plan for today
         String userId = auth.getCurrentUser().getUid();
-        Log.d("HomeFragment", "Querying meal plans for userId: " + userId + " and day: " + today);
+        Log.d("loghere", "Querying meal plans for userId: " + userId + " and day: " + today);
         
         db.collection("meal_plans")
                 .whereEqualTo("userId", userId)
@@ -269,11 +270,11 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     // Check if binding is still valid
                     if (binding == null || !isAdded()) {
-                        Log.e("HomeFragment", "Cannot process meal plans - binding is null or fragment is not attached");
+                        Log.e("loghere", "Cannot process meal plans - binding is null or fragment is not attached");
                         return;
                     }
 
-                    Log.d("HomeFragment", "Found " + queryDocumentSnapshots.size() + " meal plans");
+                    Log.d("loghere", "Found " + queryDocumentSnapshots.size() + " meal plans for today");
                     if (!queryDocumentSnapshots.isEmpty()) {
                         // Create a set to avoid duplicate recipe IDs
                         Set<String> uniqueRecipeIds = new HashSet<>();
@@ -281,26 +282,24 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                         // Collect recipe IDs from all meal plans for today
                         for (DocumentSnapshot mealPlan : queryDocumentSnapshots.getDocuments()) {
                             List<String> recipeIds = (List<String>) mealPlan.get("recipeIds");
+                            Log.d("loghere", "Meal plan document ID: " + mealPlan.getId() + " contains recipes: " + recipeIds);
                             if (recipeIds != null) {
                                 uniqueRecipeIds.addAll(recipeIds);
                             }
                         }
                         
-                        Log.d("HomeFragment", "Found " + uniqueRecipeIds.size() + " unique recipe IDs");
+                        Log.d("loghere", "Total unique recipe IDs found: " + uniqueRecipeIds.size());
+                        Log.d("loghere", "Unique recipe IDs: " + uniqueRecipeIds);
                         
                         if (!uniqueRecipeIds.isEmpty()) {
                             loadTodayRecipes(new ArrayList<>(uniqueRecipeIds));
                         } else {
+                            Log.d("loghere", "No recipe IDs found in meal plans");
                             showEmptyMealPlan();
                         }
                     } else {
+                        Log.d("loghere", "No meal plans found for today");
                         showEmptyMealPlan();
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("HomeFragment", "Error loading meal plan", e);
-                    if (isAdded() && getView() != null) {
-                        Snackbar.make(getView(), "Error loading meal plan: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
     }
@@ -308,7 +307,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private void showEmptyMealPlan() {
         // Check if binding is null or fragment is not attached
         if (binding == null || !isAdded()) {
-            Log.e("HomeFragment", "Cannot show empty meal plan - binding is null or fragment is not attached");
+            Log.e("loghere", "Cannot show empty meal plan - binding is null or fragment is not attached");
             return;
         }
 
@@ -325,7 +324,7 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     private void loadTodayRecipes(List<String> recipeIds) {
         // Check if binding is null or fragment is not attached
         if (binding == null || !isAdded()) {
-            Log.e("HomeFragment", "Cannot load recipes - binding is null or fragment is not attached");
+            Log.e("loghere", "Cannot load recipes - binding is null or fragment is not attached");
             return;
         }
 
@@ -334,161 +333,144 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         List<Recipe> dinnerRecipes = new ArrayList<>();
         AtomicInteger loadedCount = new AtomicInteger(0);
 
-        // Hide empty state message
-        binding.emptyMealPlanText.setVisibility(View.GONE);
-
-        Log.d("HomeFragment", "Loading " + recipeIds.size() + " recipes");
+        Log.d("loghere", "Starting to load " + recipeIds.size() + " recipes");
 
         for (String recipeId : recipeIds) {
-            Log.d("HomeFragment", "Loading recipe with ID: " + recipeId);
+            Log.d("loghere", "Loading recipe with ID: " + recipeId);
             db.collection("recipes").document(recipeId).get()
                     .addOnSuccessListener(documentSnapshot -> {
-                        // Check if binding is still valid
-                        if (binding == null || !isAdded()) {
-                            Log.e("HomeFragment", "Cannot process recipe - binding is null or fragment is not attached");
-                            return;
-                        }
-
                         if (documentSnapshot.exists()) {
                             try {
                                 Recipe recipe = new Recipe();
                                 recipe.setId(documentSnapshot.getId());
                                 recipe.setName(documentSnapshot.getString("name"));
-                                recipe.setDescription(documentSnapshot.getString("description"));
-                                recipe.setImageUrl(documentSnapshot.getString("imageUrl"));
                                 recipe.setCategory(documentSnapshot.getString("category"));
                                 
-                                // Handle numeric values
-                                Long cookTime = documentSnapshot.getLong("cookTime");
-                                recipe.setCookTime(cookTime != null ? cookTime.intValue() : 0);
-                                
-                                Long servings = documentSnapshot.getLong("servings");
-                                recipe.setServings(servings != null ? servings.intValue() : 0);
-                                
-                                Double calories = documentSnapshot.getDouble("calories");
-                                recipe.setCalories(calories != null ? calories : 0.0);
-                                
-                                Double totalPrice = documentSnapshot.getDouble("totalPrice");
-                                recipe.setTotalPrice(totalPrice != null ? totalPrice : 0.0);
-
-                                // Convert Lists to arrays for ingredients and instructions
-                                Object ingredientsObj = documentSnapshot.get("ingredients");
-                                if (ingredientsObj instanceof List) {
-                                    List<?> ingredientsList = (List<?>) ingredientsObj;
-                                    List<String> displayIngredients = new ArrayList<>();
-                                    
-                                    for (Object ingredient : ingredientsList) {
-                                        if (ingredient instanceof String) {
-                                            // If it's already a string, add it directly
-                                            displayIngredients.add((String) ingredient);
-                                        } else if (ingredient instanceof Map) {
-                                            // If it's a map, format it as a string
-                                            @SuppressWarnings("unchecked")
-                                            Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
-                                            String name = (String) ingredientMap.get("name");
-                                            Object quantityObj = ingredientMap.get("quantity");
-                                            String unit = (String) ingredientMap.get("unit");
-                                            
-                                            if (name != null) {
-                                                double quantity = 1.0;
-                                                if (quantityObj instanceof Number) {
-                                                    quantity = ((Number) quantityObj).doubleValue();
-                                                }
-                                                
-                                                String displayString = quantity > 0 && unit != null ? 
-                                                    String.format("%.1f %s %s", quantity, unit, name) : name;
-                                                displayIngredients.add(displayString);
-                                            }
-                                        }
-                                    }
-                                    recipe.setIngredients(displayIngredients.toArray(new String[0]));
-                                } else {
-                                    recipe.setIngredients(new String[0]);
-                                }
-
-                                List<String> instructionsList = (List<String>) documentSnapshot.get("instructions");
-                                if (instructionsList != null) {
-                                    recipe.setInstructions(instructionsList.toArray(new String[0]));
-                                } else {
-                                    recipe.setInstructions(new String[0]);
-                                }
-                                
-                                Log.d("HomeFragment", "Loaded recipe: " + recipe.getName() + " with category: " + recipe.getCategory());
-                                
-                                // Categorize recipe
                                 String category = recipe.getCategory().toLowerCase();
+                                Log.d("loghere", String.format("Recipe loaded - ID: %s, Name: %s, Category: %s", 
+                                    recipe.getId(), recipe.getName(), category));
+
+                                // Categorize recipe
                                 if (category.contains("breakfast")) {
                                     breakfastRecipes.add(recipe);
+                                    Log.d("loghere", "Added to breakfast category. Current breakfast recipes: " + breakfastRecipes.size());
                                 } else if (category.contains("lunch")) {
                                     lunchRecipes.add(recipe);
+                                    Log.d("loghere", "Added to lunch category. Current lunch recipes: " + lunchRecipes.size());
                                 } else if (category.contains("dinner")) {
                                     dinnerRecipes.add(recipe);
+                                    Log.d("loghere", "Added to dinner category. Current dinner recipes: " + dinnerRecipes.size());
                                 }
 
                                 int currentCount = loadedCount.incrementAndGet();
-                                Log.d("HomeFragment", "Loaded " + currentCount + " of " + recipeIds.size() + " recipes");
+                                Log.d("loghere", String.format("Progress: %d/%d recipes loaded", currentCount, recipeIds.size()));
                                 
                                 if (currentCount == recipeIds.size()) {
                                     // Final null check before updating UI
                                     if (binding != null && isAdded()) {
-                                        Log.d("HomeFragment", "All recipes loaded. Breakfast: " + breakfastRecipes.size() + 
-                                                ", Lunch: " + lunchRecipes.size() + 
-                                                ", Dinner: " + dinnerRecipes.size());
+                                        Log.d("loghere", String.format("All recipes loaded - Breakfast: %d, Lunch: %d, Dinner: %d", 
+                                            breakfastRecipes.size(), lunchRecipes.size(), dinnerRecipes.size()));
                                         
-                                        // All recipes loaded, setup adapters for each section
-                                        setupMealSection(binding.breakfastSection, "Breakfast", breakfastRecipes);
-                                        setupMealSection(binding.lunchSection, "Lunch", lunchRecipes);
-                                        setupMealSection(binding.dinnerSection, "Dinner", dinnerRecipes);
+                                        // Log details of each category
+                                        Log.d("loghere", "Breakfast Recipes: " + getRecipeNames(breakfastRecipes));
+                                        Log.d("loghere", "Lunch Recipes: " + getRecipeNames(lunchRecipes));
+                                        Log.d("loghere", "Dinner Recipes: " + getRecipeNames(dinnerRecipes));
+                                        
+                                        // Setup sections
+                                        if (!breakfastRecipes.isEmpty()) {
+                                            setupMealSection(binding.breakfastSection, "Breakfast", new ArrayList<>(breakfastRecipes));
+                                        }
+                                        if (!lunchRecipes.isEmpty()) {
+                                            setupMealSection(binding.lunchSection, "Lunch", new ArrayList<>(lunchRecipes));
+                                        }
+                                        if (!dinnerRecipes.isEmpty()) {
+                                            setupMealSection(binding.dinnerSection, "Dinner", new ArrayList<>(dinnerRecipes));
+                                        }
 
-                                        // Show/hide sections based on content
+                                        // Update UI visibility
                                         binding.breakfastSection.setVisibility(breakfastRecipes.isEmpty() ? View.GONE : View.VISIBLE);
                                         binding.lunchSection.setVisibility(lunchRecipes.isEmpty() ? View.GONE : View.VISIBLE);
                                         binding.dinnerSection.setVisibility(dinnerRecipes.isEmpty() ? View.GONE : View.VISIBLE);
                                     }
                                 }
                             } catch (Exception e) {
-                                Log.e("HomeFragment", "Error loading recipe: " + recipeId, e);
-                                if (isAdded() && getView() != null) {
-                                    Snackbar.make(getView(), "Error loading recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-                                }
+                                Log.e("loghere", "Error processing recipe: " + recipeId + ", Error: " + e.getMessage());
                             }
                         } else {
-                            Log.d("HomeFragment", "Recipe document does not exist: " + recipeId);
+                            Log.d("loghere", "Recipe document does not exist: " + recipeId);
                         }
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e("loghere", "Failed to load recipe: " + recipeId + ", Error: " + e.getMessage());
                     });
         }
     }
 
+    // Helper method to get recipe names for logging
+    private String getRecipeNames(List<Recipe> recipes) {
+        List<String> names = new ArrayList<>();
+        for (Recipe recipe : recipes) {
+            names.add(recipe.getName());
+        }
+        return names.toString();
+    }
+
     private void setupMealSection(View section, String title, List<Recipe> recipes) {
-        if (recipes.isEmpty()) return;
+        if (recipes.isEmpty()) {
+            Log.d("loghere", "Skipping empty " + title + " section");
+            return;
+        }
+
+        Log.d("loghere", "Setting up " + title + " section with " + recipes.size() + " recipes");
+        Log.d("loghere", title + " Recipes: " + getRecipeNames(recipes));
 
         // Set section title based on the section type
         TextView titleView;
         RecyclerView recyclerView;
+        ImageView scrollIndicator;
         
         if (section == binding.breakfastSection) {
             titleView = binding.breakfastTitle;
             recyclerView = binding.breakfastRecyclerView;
+            scrollIndicator = binding.breakfastScrollIndicator;
         } else if (section == binding.lunchSection) {
             titleView = binding.lunchTitle;
             recyclerView = binding.lunchRecyclerView;
+            scrollIndicator = binding.lunchScrollIndicator;
         } else if (section == binding.dinnerSection) {
             titleView = binding.dinnerTitle;
             recyclerView = binding.dinnerRecyclerView;
+            scrollIndicator = binding.dinnerScrollIndicator;
         } else {
             return;
         }
 
-        // Set the title
-        titleView.setText(title);
+        // Set the title with count
+        titleView.setText(String.format("%s (%d)", title, recipes.size()));
         titleView.setVisibility(View.VISIBLE);
 
-        // Configure RecyclerView
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+        // Configure RecyclerView with fixed width items
+        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+        recyclerView.setLayoutManager(layoutManager);
         recyclerView.setHasFixedSize(true);
         
-        // Create and set adapter
-        RecipeAdapter adapter = new RecipeAdapter(recipes, new RecipeAdapter.OnRecipeClickListener() {
+        // Add spacing between items
+        int spacingInPixels = getResources().getDimensionPixelSize(R.dimen.recipe_card_spacing);
+        recyclerView.addItemDecoration(new RecyclerView.ItemDecoration() {
+            @Override
+            public void getItemOffsets(@NonNull android.graphics.Rect outRect, @NonNull View view, 
+                                     @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+                int position = parent.getChildAdapterPosition(view);
+                // Add spacing to all items except the last one
+                if (position != parent.getAdapter().getItemCount() - 1) {
+                    outRect.right = spacingInPixels;
+                }
+            }
+        });
+        
+        // Create and set adapter with a new instance of the recipe list
+        List<Recipe> adapterRecipes = new ArrayList<>(recipes);
+        RecipeAdapter adapter = new RecipeAdapter(adapterRecipes, new RecipeAdapter.OnRecipeClickListener() {
             @Override
             public void onAddToPlanClick(Recipe recipe) {
                 // Do nothing as the button will be hidden
@@ -505,11 +487,27 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
         }, true); // Pass true to indicate this is for Today's Meal Plan
         
         recyclerView.setAdapter(adapter);
+        adapter.notifyDataSetChanged(); // Ensure the adapter refreshes
         
         // Make sure the section is visible
         section.setVisibility(View.VISIBLE);
+        recyclerView.setVisibility(View.VISIBLE);
         
-        Log.d("HomeFragment", "Setup section: " + title + " with " + recipes.size() + " recipes");
+        // Show scroll indicator only if there are multiple items
+        scrollIndicator.setVisibility(recipes.size() > 1 ? View.VISIBLE : View.GONE);
+        
+        // Add scroll listener to show/hide scroll indicator based on scroll position
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                boolean canScrollHorizontally = recyclerView.canScrollHorizontally(1) || 
+                                             recyclerView.canScrollHorizontally(-1);
+                scrollIndicator.setVisibility(canScrollHorizontally ? View.VISIBLE : View.GONE);
+            }
+        });
+        
+        Log.d("loghere", "Setup complete for " + title + " section. Adapter item count: " + adapter.getItemCount());
     }
 
     @Override

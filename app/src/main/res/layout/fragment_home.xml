@@ -94,14 +94,26 @@
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
 
+                        <ImageView
+                            android:id="@+id/breakfastScrollIndicator"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_marginStart="8dp"
+                            android:src="@drawable/ic_scroll_horizontal"
+                            android:alpha="0.6"
+                            app:layout_constraintStart_toEndOf="@id/breakfastTitle"
+                            app:layout_constraintTop_toTopOf="@id/breakfastTitle"
+                            app:layout_constraintBottom_toBottomOf="@id/breakfastTitle"
+                            app:tint="@color/white" />
+
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/breakfastRecyclerView"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:clipToPadding="false"
-                            android:paddingEnd="8dp"
-                            android:paddingStart="8dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="60dp"
                             app:layout_constraintTop_toBottomOf="@id/breakfastTitle" />
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -120,8 +132,21 @@
                             android:text="Lunch"
                             android:textSize="18sp"
                             android:textStyle="bold"
+                            android:textColor="@color/white"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
+
+                        <ImageView
+                            android:id="@+id/lunchScrollIndicator"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_marginStart="8dp"
+                            android:src="@drawable/ic_scroll_horizontal"
+                            android:alpha="0.6"
+                            app:layout_constraintStart_toEndOf="@id/lunchTitle"
+                            app:layout_constraintTop_toTopOf="@id/lunchTitle"
+                            app:layout_constraintBottom_toBottomOf="@id/lunchTitle"
+                            app:tint="@color/white" />
 
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/lunchRecyclerView"
@@ -129,8 +154,8 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:clipToPadding="false"
-                            android:paddingEnd="8dp"
-                            android:paddingStart="8dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="60dp"
                             app:layout_constraintTop_toBottomOf="@id/lunchTitle" />
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -149,8 +174,21 @@
                             android:text="Dinner"
                             android:textSize="18sp"
                             android:textStyle="bold"
+                            android:textColor="@color/white"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
+
+                        <ImageView
+                            android:id="@+id/dinnerScrollIndicator"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_marginStart="8dp"
+                            android:src="@drawable/ic_scroll_horizontal"
+                            android:alpha="0.6"
+                            app:layout_constraintStart_toEndOf="@id/dinnerTitle"
+                            app:layout_constraintTop_toTopOf="@id/dinnerTitle"
+                            app:layout_constraintBottom_toBottomOf="@id/dinnerTitle"
+                            app:tint="@color/white" />
 
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/dinnerRecyclerView"
@@ -158,8 +196,8 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:clipToPadding="false"
-                            android:paddingEnd="8dp"
-                            android:paddingStart="8dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="60dp"
                             app:layout_constraintTop_toBottomOf="@id/dinnerTitle" />
 
                     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,5 +1,6 @@
 package com.example.meal_app.adapter;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,8 +40,14 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_recipe, parent, false);
+        View view;
+        if (isMealPlanAdapter) {
+            view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.meal_plan_recipe_card, parent, false);
+        } else {
+            view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.featured_recipe_card, parent, false);
+        }
         return new ViewHolder(view);
     }
 
@@ -48,32 +55,53 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Recipe recipe = recipes.get(position);
         
+        // Set recipe name
         holder.recipeName.setText(recipe.getName());
-        holder.recipeDescription.setText(recipe.getDescription());
-        holder.cookingTime.setText(String.format("%d min", recipe.getCookTime()));
-        holder.servings.setText(String.format("%d servings", recipe.getServings()));
-        holder.calories.setText(String.format("%.0f kcal", recipe.getCalories()));
-        
-        // Load recipe image
-        Glide.with(holder.itemView.getContext())
-            .load(recipe.getImageUrl())
-            .placeholder(R.drawable.placeholder_recipe)
-            .error(R.drawable.placeholder_recipe)
-            .into(holder.recipeImage);
-            
-        // Hide Add to Plan button for meal plan items
-        if (isMealPlanAdapter) {
-            holder.addToPlanButton.setVisibility(View.GONE);
+
+        // Load recipe image using Glide
+        if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
+            Glide.with(holder.itemView.getContext())
+                    .load(recipe.getImageUrl())
+                    .placeholder(R.drawable.placeholder_image)
+                    .error(R.drawable.error_image)
+                    .centerCrop()
+                    .into(holder.recipeImage);
         } else {
-            holder.addToPlanButton.setVisibility(View.VISIBLE);
-            holder.addToPlanButton.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onAddToPlanClick(recipe);
-                }
-            });
+            holder.recipeImage.setImageResource(R.drawable.placeholder_image);
         }
 
-        // Add click listener for the entire item
+        // Set cook time
+        if (holder.recipeCookTime != null) {
+            holder.recipeCookTime.setText(recipe.getCookTime() + " min");
+        }
+
+        // Set servings
+        if (holder.recipeServings != null) {
+            holder.recipeServings.setText(recipe.getServings() + " ppl");
+        }
+
+        // Only set these for featured recipe cards
+        if (!isMealPlanAdapter) {
+            if (holder.recipeDescription != null) {
+                holder.recipeDescription.setText(recipe.getDescription());
+            }
+            if (holder.recipeCategory != null) {
+                holder.recipeCategory.setText(recipe.getCategory());
+            }
+            if (holder.recipeCalories != null) {
+                holder.recipeCalories.setText(String.format("%.0f cal", recipe.getCalories()));
+            }
+            if (holder.addToPlanButton != null) {
+                holder.addToPlanButton.setVisibility(View.VISIBLE);
+                holder.addToPlanButton.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onAddToPlanClick(recipe);
+                    }
+                });
+            }
+        }
+
+        // Set click listener for the entire item
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onRecipeClick(recipe);
@@ -83,7 +111,11 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
 
     @Override
     public int getItemCount() {
-        return Math.min(recipes.size(), currentPage * ITEMS_PER_PAGE);
+        // Show all items for meal plan, use pagination otherwise
+        int count = isMealPlanAdapter ? recipes.size() : Math.min(recipes.size(), currentPage * ITEMS_PER_PAGE);
+        Log.d("loghere", "RecipeAdapter getItemCount - isMealPlan: " + isMealPlanAdapter + 
+              ", total recipes: " + recipes.size() + ", returning count: " + count);
+        return count;
     }
 
     public void showMore() {
@@ -101,24 +133,28 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
         notifyDataSetChanged();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder {
-        ImageView recipeImage;
-        TextView recipeName;
-        TextView recipeDescription;
-        TextView cookingTime;
-        TextView servings;
-        TextView calories;
-        MaterialButton addToPlanButton;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public final TextView recipeName;
+        public final ImageView recipeImage;
+        public final TextView recipeCookTime;
+        public final TextView recipeServings;
+        // Optional views that might not be present in meal plan cards
+        public final TextView recipeDescription;
+        public final TextView recipeCategory;
+        public final TextView recipeCalories;
+        public final View addToPlanButton;
 
-        ViewHolder(View itemView) {
-            super(itemView);
-            recipeImage = itemView.findViewById(R.id.recipeImage);
-            recipeName = itemView.findViewById(R.id.recipeName);
-            recipeDescription = itemView.findViewById(R.id.recipeDescription);
-            cookingTime = itemView.findViewById(R.id.cookingTime);
-            servings = itemView.findViewById(R.id.servings);
-            calories = itemView.findViewById(R.id.calories);
-            addToPlanButton = itemView.findViewById(R.id.addToPlanButton);
+        public ViewHolder(View view) {
+            super(view);
+            recipeName = view.findViewById(R.id.recipeName);
+            recipeImage = view.findViewById(R.id.recipeImage);
+            recipeCookTime = view.findViewById(R.id.recipeCookTime);
+            recipeServings = view.findViewById(R.id.recipeServings);
+            // These might be null for meal plan cards
+            recipeDescription = view.findViewById(R.id.recipeDescription);
+            recipeCategory = view.findViewById(R.id.recipeCategory);
+            recipeCalories = view.findViewById(R.id.recipeCalories);
+            addToPlanButton = view.findViewById(R.id.addToPlanButton);
         }
     }
 } 

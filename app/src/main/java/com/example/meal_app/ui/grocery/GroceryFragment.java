@@ -249,33 +249,51 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         // Group ingredients by category
         Map<String, List<GroceryItem>> categorizedIngredients = new HashMap<>();
         for (GroceryItem ingredient : ingredients) {
-            String category = ingredient.getCategory();
+            // Determine category based on ingredient name and type
+            String category = determineIngredientCategory(ingredient.getName());
             if (!categorizedIngredients.containsKey(category)) {
                 categorizedIngredients.put(category, new ArrayList<>());
             }
+            ingredient.setCategory(category); // Set the category in the item
             categorizedIngredients.get(category).add(ingredient);
         }
         
         Log.d("GroceryFragment", "Categories found: " + categorizedIngredients.keySet());
 
-        // Convert categorized ingredients to List<Object> format
+        // Sort categories and create final list
         List<Object> items = new ArrayList<>();
-        for (Map.Entry<String, List<GroceryItem>> entry : categorizedIngredients.entrySet()) {
-            // Add category header
-            items.add(entry.getKey());
-            // Add items in this category
-            items.addAll(entry.getValue());
+        String[] categoryOrder = {
+            "Meat & Fish",
+            "Dairy",
+            "Fruits",
+            "Vegetables",
+            "Grains & Pasta",
+            "Condiments & Spices",
+            "Other"
+        };
+
+        // Add categories in order
+        for (String category : categoryOrder) {
+            List<GroceryItem> categoryItems = categorizedIngredients.get(category);
+            if (categoryItems != null && !categoryItems.isEmpty()) {
+                // Add category header
+                items.add(category);
+                // Sort items within category by name
+                categoryItems.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+                // Add sorted items
+                items.addAll(categoryItems);
+            }
         }
 
         // Update adapter with the new items
         if (adapter != null) {
             Log.d("GroceryFragment", "Setting up RecyclerView");
-                    allItems = items;
+            allItems = items;
             filteredItems = new ArrayList<>(items);
             adapter.updateData(filteredItems);
 
             // Update totals and progress
-                    updateTotals();
+            updateTotals();
             updateProgress();
             
             // Show/hide views based on whether we have items
@@ -291,17 +309,66 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                         recyclerView.setVisibility(View.VISIBLE);
                         emptyStateLayout.setVisibility(View.GONE);
                     }
-                } else {
-                    Log.e("GroceryFragment", "RecyclerView or emptyStateLayout is null");
                 }
-            } else {
-                Log.e("GroceryFragment", "Fragment is not attached or view is null");
             }
-            
-            Log.d("GroceryFragment", "RecyclerView setup complete");
-        } else {
-            Log.e("GroceryFragment", "adapter is null");
         }
+    }
+
+    private String determineIngredientCategory(String ingredient) {
+        ingredient = ingredient.toLowerCase();
+        
+        // Meat & Fish
+        if (ingredient.contains("meat") || ingredient.contains("chicken") || 
+            ingredient.contains("beef") || ingredient.contains("pork") || 
+            ingredient.contains("fish") || ingredient.contains("lamb") ||
+            ingredient.contains("shrimp") || ingredient.contains("seafood")) {
+            return "Meat & Fish";
+        }
+        
+        // Dairy
+        if (ingredient.contains("milk") || ingredient.contains("cheese") || 
+            ingredient.contains("yogurt") || ingredient.contains("cream") ||
+            ingredient.contains("butter") || ingredient.contains("curd") ||
+            ingredient.contains("paneer")) {
+            return "Dairy";
+        }
+        
+        // Fruits
+        if (ingredient.contains("apple") || ingredient.contains("banana") || 
+            ingredient.contains("orange") || ingredient.contains("berry") ||
+            ingredient.contains("fruit") || ingredient.contains("mango") ||
+            ingredient.contains("grape") || ingredient.contains("melon")) {
+            return "Fruits";
+        }
+        
+        // Vegetables
+        if (ingredient.contains("carrot") || ingredient.contains("potato") || 
+            ingredient.contains("onion") || ingredient.contains("tomato") ||
+            ingredient.contains("vegetable") || ingredient.contains("garlic") ||
+            ingredient.contains("ginger") || ingredient.contains("pepper") ||
+            ingredient.contains("lettuce") || ingredient.contains("spinach") ||
+            ingredient.contains("cucumber")) {
+            return "Vegetables";
+        }
+        
+        // Grains & Pasta
+        if (ingredient.contains("rice") || ingredient.contains("pasta") || 
+            ingredient.contains("flour") || ingredient.contains("bread") ||
+            ingredient.contains("cereal") || ingredient.contains("noodle") ||
+            ingredient.contains("wheat") || ingredient.contains("grain")) {
+            return "Grains & Pasta";
+        }
+        
+        // Condiments & Spices
+        if (ingredient.contains("oil") || ingredient.contains("sauce") || 
+            ingredient.contains("vinegar") || ingredient.contains("spice") ||
+            ingredient.contains("herb") || ingredient.contains("salt") ||
+            ingredient.contains("sugar") || ingredient.contains("masala") ||
+            ingredient.contains("powder") || ingredient.contains("seasoning")) {
+            return "Condiments & Spices";
+        }
+        
+        return "Other";
     }
 
     private void showEmptyState() {

@@ -86,48 +86,34 @@
         android:progressBackgroundTint="#333333"
         app:layout_constraintTop_toBottomOf="@id/progressLabel"/>
 
-    <!-- Price Summary -->
+    <!-- Price Summary Section -->
     <LinearLayout
         android:id="@+id/priceSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginHorizontal="16dp"
+        android:orientation="vertical"
         android:layout_marginTop="16dp"
+        android:layout_marginHorizontal="16dp"
         app:layout_constraintTop_toBottomOf="@id/progressBar">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Total:"
-            android:textColor="@color/gray"
-            android:textSize="16sp"/>
-
-        <TextView
             android:id="@+id/totalPrice"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Nrs 0"
-            android:textColor="@color/white"
-            android:textSize="16sp"/>
-
-        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Remaining:"
-            android:textColor="@color/gray"
-            android:textSize="16sp"/>
+            android:text="Total: Nrs 0"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"/>
 
         <TextView
             android:id="@+id/remainingPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="Nrs 0"
-            android:textColor="@color/white"
-            android:textSize="16sp"/>
+            android:text="Remaining: Nrs 0"
+            android:textColor="@color/orange"
+            android:textSize="16sp"
+            android:layout_marginTop="4dp"/>
+
     </LinearLayout>
 
     <!-- Grocery List -->

@@ -11,74 +11,48 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Background for swipe actions -->
-        <LinearLayout
-            android:id="@+id/swipeBackground"
-            android:layout_width="160dp"
+        <!-- Background for Edit Action (Right Swipe) -->
+        <FrameLayout
+            android:id="@+id/editBackground"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="end"
-            android:orientation="horizontal">
+            android:background="#2196F3"
+            android:visibility="gone">
 
-            <LinearLayout
-                android:id="@+id/editButton"
-                android:layout_width="80dp"
-                android:layout_height="match_parent"
-                android:background="#2196F3"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:minHeight="120dp"
-                android:orientation="vertical">
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="16dp"
+                android:src="@drawable/ic_edit"
+                app:tint="@android:color/white" />
+        </FrameLayout>
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_edit"
-                    app:tint="@android:color/white" />
+        <!-- Background for Delete Action (Left Swipe) -->
+        <FrameLayout
+            android:id="@+id/deleteBackground"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#F44336"
+            android:visibility="gone">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Edit"
-                    android:textColor="@android:color/white"
-                    android:textSize="12sp" />
-            </LinearLayout>
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="16dp"
+                android:src="@drawable/ic_delete"
+                app:tint="@android:color/white" />
+        </FrameLayout>
 
-            <LinearLayout
-                android:id="@+id/deleteButton"
-                android:layout_width="80dp"
-                android:layout_height="match_parent"
-                android:background="#F44336"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:minHeight="120dp"
-                android:orientation="vertical">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_delete"
-                    app:tint="@android:color/white" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Delete"
-                    android:textColor="@android:color/white"
-                    android:textSize="12sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Main content -->
+        <!-- Main content (Foreground) -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/foreground"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:color/white"
-            android:elevation="4dp"
+            android:clickable="true"
+            android:focusable="true"
             android:padding="16dp">
 
             <ImageView

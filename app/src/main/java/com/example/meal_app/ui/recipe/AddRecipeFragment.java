@@ -53,8 +53,8 @@ public class AddRecipeFragment extends Fragment {
 
     private static final int PICK_IMAGE_REQUEST = 1;
     private Uri selectedImageUri;
-    private List<View> ingredientViews = new ArrayList<>();
-    private List<View> instructionViews = new ArrayList<>();
+    protected List<View> ingredientViews = new ArrayList<>();
+    protected List<View> instructionViews = new ArrayList<>();
     protected FirebaseFirestore db;
     private OkHttpClient client;
     private View saveButton;
@@ -277,12 +277,7 @@ public class AddRecipeFragment extends Fragment {
         View imageUploadCard = root.findViewById(R.id.imageUploadCard);
         ImageButton removeImageButton = root.findViewById(R.id.removeImageButton);
 
-        imageUploadCard.setOnClickListener(v -> {
-            Intent intent = new Intent();
-            intent.setType("image/*");
-            intent.setAction(Intent.ACTION_GET_CONTENT);
-            startActivityForResult(Intent.createChooser(intent, "Select Recipe Image"), PICK_IMAGE_REQUEST);
-        });
+        imageUploadCard.setOnClickListener(v -> openImagePicker());
 
         removeImageButton.setOnClickListener(v -> {
             selectedImageUri = null;
@@ -310,25 +305,149 @@ public class AddRecipeFragment extends Fragment {
         return new ArrayList<>(Arrays.asList(array));
     }
 
-    private void addIngredientView(View root) {
-        LinearLayout container = root.findViewById(R.id.ingredientsContainer);
-        View ingredientView = getLayoutInflater().inflate(R.layout.item_ingredient_input, container, false);
+    protected void openImagePicker() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Recipe Image"), PICK_IMAGE_REQUEST);
+    }
 
-        // Setup unit spinner
+    protected Uri getSelectedImageUri() {
+        return selectedImageUri;
+    }
+
+    protected void setSelectedImageUri(Uri uri) {
+        this.selectedImageUri = uri;
+        if (uri != null && getView() != null) {
+            ImageView imageView = getView().findViewById(R.id.recipeImageView);
+            View uploadPrompt = getView().findViewById(R.id.uploadPromptLayout);
+            if (imageView != null && uploadPrompt != null) {
+                Glide.with(this)
+                    .load(uri)
+                    .into(imageView);
+                uploadPrompt.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    protected String getBase64FromUri(Uri uri) throws IOException {
+        InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
+        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream);
+        byte[] imageBytes = outputStream.toByteArray();
+        return Base64.encodeToString(imageBytes, Base64.DEFAULT);
+    }
+
+    protected void uploadImageToImgBB(String base64Image, Map<String, Object> recipeData) {
+        if (loadingSnackbar != null) {
+            loadingSnackbar.setText("Uploading image...");
+        }
+
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("key", Constants.IMGBB_API_KEY)
+                .addFormDataPart("image", base64Image)
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://api.imgbb.com/1/upload")
+                .post(requestBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                requireActivity().runOnUiThread(() -> {
+                    showError("Failed to upload image: " + e.getMessage());
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String jsonData = response.body().string();
+                try {
+                    JSONObject jsonObject = new JSONObject(jsonData);
+                    JSONObject data = jsonObject.getJSONObject("data");
+                    String imageUrl = data.getString("url");
+                    recipeData.put("imageUrl", imageUrl);
+                    requireActivity().runOnUiThread(() -> {
+                        if (AddRecipeFragment.this instanceof EditRecipeFragment) {
+                            ((EditRecipeFragment) AddRecipeFragment.this).updateRecipeInFirestore(recipeData);
+                        } else {
+                            saveRecipeToFirestore(recipeData);
+                        }
+                    });
+                } catch (JSONException e) {
+                    requireActivity().runOnUiThread(() -> {
+                        showError("Failed to process image upload response: " + e.getMessage());
+                    });
+                }
+            }
+        });
+    }
+
+    protected void addIngredientView(View root) {
+        View ingredientView = getLayoutInflater().inflate(R.layout.item_ingredient_input, null);
+        setupIngredientView(ingredientView);
+
+        // Add margin to the ingredient view
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 0, 0, 32); // 32dp bottom margin
+        ingredientView.setLayoutParams(params);
+
+        LinearLayout container = root.findViewById(R.id.ingredientsContainer);
+        container.addView(ingredientView);
+        ingredientViews.add(ingredientView);
+    }
+
+    protected void addInstructionStep(View root) {
+        View stepView = getLayoutInflater().inflate(R.layout.item_instruction_step, null);
+        
+        // Set step number
+        TextView stepNumber = stepView.findViewById(R.id.stepNumberText);
+        stepNumber.setText(String.format("%d.", instructionViews.size() + 1));
+
+        // Add margin to the step view
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 0, 0, 32); // 32dp bottom margin
+        stepView.setLayoutParams(params);
+
+        setupInstructionView(stepView);
+        LinearLayout container = root.findViewById(R.id.instructionsContainer);
+        container.addView(stepView);
+        instructionViews.add(stepView);
+    }
+
+    private void setupIngredientView(View ingredientView) {
+        // Setup spinners
         Spinner unitSpinner = ingredientView.findViewById(R.id.unitSpinner);
         ArrayAdapter<CharSequence> unitAdapter = ArrayAdapter.createFromResource(requireContext(),
                 R.array.ingredient_units, android.R.layout.simple_spinner_item);
         unitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         unitSpinner.setAdapter(unitAdapter);
 
-        // Setup type spinner
         Spinner typeSpinner = ingredientView.findViewById(R.id.typeSpinner);
         ArrayAdapter<CharSequence> typeAdapter = ArrayAdapter.createFromResource(requireContext(),
                 R.array.ingredient_types, android.R.layout.simple_spinner_item);
         typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         typeSpinner.setAdapter(typeAdapter);
 
-        // Setup price input listener
+        // Setup remove button
+        ImageButton removeButton = ingredientView.findViewById(R.id.removeIngredientButton);
+        removeButton.setOnClickListener(v -> {
+            ((ViewGroup) ingredientView.getParent()).removeView(ingredientView);
+            ingredientViews.remove(ingredientView);
+            updateTotalPrice();
+        });
+
+        // Setup price change listener
         EditText priceInput = ingredientView.findViewById(R.id.priceInput);
         priceInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -342,35 +461,16 @@ public class AddRecipeFragment extends Fragment {
                 updateTotalPrice();
             }
         });
-
-        // Setup remove button
-        ingredientView.findViewById(R.id.removeIngredientButton).setOnClickListener(v -> {
-            container.removeView(ingredientView);
-            ingredientViews.remove(ingredientView);
-            updateTotalPrice();
-        });
-
-        container.addView(ingredientView);
-        ingredientViews.add(ingredientView);
     }
 
-    private void addInstructionStep(View root) {
-        LinearLayout container = root.findViewById(R.id.instructionsContainer);
-        View stepView = getLayoutInflater().inflate(R.layout.item_instruction_step, container, false);
-
-        // Set step number
-        TextView stepNumber = stepView.findViewById(R.id.stepNumberText);
-        stepNumber.setText(String.format("%d.", instructionViews.size() + 1));
-
+    private void setupInstructionView(View stepView) {
         // Setup remove button
-        stepView.findViewById(R.id.removeStepButton).setOnClickListener(v -> {
-            container.removeView(stepView);
+        ImageButton removeButton = stepView.findViewById(R.id.removeStepButton);
+        removeButton.setOnClickListener(v -> {
+            ((ViewGroup) stepView.getParent()).removeView(stepView);
             instructionViews.remove(stepView);
             updateStepNumbers();
         });
-
-        container.addView(stepView);
-        instructionViews.add(stepView);
     }
 
     private void updateStepNumbers() {
@@ -432,76 +532,6 @@ public class AddRecipeFragment extends Fragment {
                 })
                 .setNegativeButton("No", null)
                 .show();
-    }
-
-    private String getBase64FromUri(Uri uri) throws IOException {
-        InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
-        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream);
-        byte[] imageBytes = outputStream.toByteArray();
-        return Base64.encodeToString(imageBytes, Base64.DEFAULT);
-    }
-
-    private void uploadImageToImgBB(String base64Image, final Map<String, Object> recipe) {
-        if (loadingSnackbar != null) {
-            loadingSnackbar.setText("Uploading image...");
-        }
-
-        RequestBody requestBody = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("key", Constants.IMGBB_API_KEY)
-                .addFormDataPart("image", base64Image)
-                .build();
-
-        Request request = new Request.Builder()
-                .url("https://api.imgbb.com/1/upload")
-                .post(requestBody)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                requireActivity().runOnUiThread(() -> {
-                    showError("Network error: " + e.getMessage()
-                            + "\nPlease check your internet connection and try again.");
-                });
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    requireActivity().runOnUiThread(() -> {
-                        String errorMsg = "Image upload failed (HTTP " + response.code() + ")";
-                        if (response.code() == 400) {
-                            errorMsg = "Invalid image format or size too large. Please try a different image.";
-                        } else if (response.code() == 403) {
-                            errorMsg = "API key error. Please contact support.";
-                        }
-                        showError(errorMsg);
-                    });
-                    return;
-                }
-
-                String jsonData = response.body().string();
-                try {
-                    JSONObject jsonObject = new JSONObject(jsonData);
-                    JSONObject data = jsonObject.getJSONObject("data");
-                    String imageUrl = data.getString("url");
-                    recipe.put("imageUrl", imageUrl);
-                    requireActivity().runOnUiThread(() -> {
-                        if (loadingSnackbar != null) {
-                            loadingSnackbar.setText("Saving recipe...");
-                        }
-                        saveRecipeToFirestore(recipe);
-                    });
-                } catch (JSONException e) {
-                    requireActivity().runOnUiThread(() -> {
-                        showError("Failed to process image upload response: " + e.getMessage());
-                    });
-                }
-            }
-        });
     }
 
     private void saveRecipeToFirestore(Map<String, Object> recipe) {

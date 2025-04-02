@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.meal_app.R;
 import com.example.meal_app.model.Recipe;
+import com.example.meal_app.databinding.ItemRecipeCardBinding;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import java.util.List;
 
 public class RecipeCardAdapter extends RecyclerView.Adapter<RecipeCardAdapter.RecipeViewHolder> {
@@ -45,7 +47,8 @@ public class RecipeCardAdapter extends RecyclerView.Adapter<RecipeCardAdapter.Re
         return recipes.size();
     }
 
-    class RecipeViewHolder extends RecyclerView.ViewHolder {
+    public class RecipeViewHolder extends RecyclerView.ViewHolder {
+        public final ConstraintLayout foregroundView;
         private final ImageView recipeImage;
         private final TextView recipeName;
         private final TextView recipeCategory;
@@ -54,6 +57,7 @@ public class RecipeCardAdapter extends RecyclerView.Adapter<RecipeCardAdapter.Re
 
         public RecipeViewHolder(@NonNull View itemView) {
             super(itemView);
+            foregroundView = itemView.findViewById(R.id.foreground);
             recipeImage = itemView.findViewById(R.id.recipeImage);
             recipeName = itemView.findViewById(R.id.recipeName);
             recipeCategory = itemView.findViewById(R.id.recipeCategory);
@@ -71,8 +75,8 @@ public class RecipeCardAdapter extends RecyclerView.Adapter<RecipeCardAdapter.Re
         public void bind(Recipe recipe) {
             recipeName.setText(recipe.getName());
             recipeCategory.setText(recipe.getCategory());
-            recipeTime.setText(recipe.getCookTime() + " min");
-            recipeServings.setText(recipe.getServings() + " servings");
+            recipeTime.setText(String.format("%d min", recipe.getCookTime()));
+            recipeServings.setText(String.format("%d servings", recipe.getServings()));
 
             String imageUrl = recipe.getImageUrl();
             if (imageUrl != null && !imageUrl.isEmpty()) {
@@ -81,6 +85,7 @@ public class RecipeCardAdapter extends RecyclerView.Adapter<RecipeCardAdapter.Re
                         .placeholder(R.drawable.placeholder_recipe)
                         .error(R.drawable.placeholder_recipe)
                         .centerCrop()
+                        .timeout(60000)
                         .into(recipeImage);
             } else {
                 recipeImage.setImageResource(R.drawable.placeholder_recipe);

@@ -477,6 +477,10 @@ public class MealsFragment extends Fragment {
                             // Remove ingredients from grocery list
                             removeIngredientsFromGroceryList(recipe.getId(), userId);
 
+                            // Update the local MealDay object first
+                            mealDay.removeRecipe(recipe);
+                            adapter.notifyDataSetChanged();
+
                             // Now update or delete the meal plan
                             if (recipeIds.isEmpty()) {
                                 // If no recipes left, delete the document
@@ -484,12 +488,19 @@ public class MealsFragment extends Fragment {
                                         .document(document.getId())
                                         .delete()
                                         .addOnSuccessListener(aVoid -> {
+                                            // Refresh the UI after successful deletion
                                             loadMealPlan();
                                             adapter.setDayLoading(day, false);
+                                            if (getView() != null) {
+                                                Snackbar.make(getView(), "Recipe removed from " + day, Snackbar.LENGTH_SHORT).show();
+                                            }
                                         })
                                         .addOnFailureListener(e -> {
                                             handleError("Error deleting meal plan: " + e.getMessage());
                                             adapter.setDayLoading(day, false);
+                                            // Revert local change if deletion failed
+                                            mealDay.addRecipe(recipe);
+                                            adapter.notifyDataSetChanged();
                                         });
                             } else {
                                 // Update with remaining recipes
@@ -497,12 +508,19 @@ public class MealsFragment extends Fragment {
                                         .document(document.getId())
                                         .update("recipeIds", recipeIds)
                                         .addOnSuccessListener(aVoid -> {
+                                            // Refresh the UI after successful update
                                             loadMealPlan();
                                             adapter.setDayLoading(day, false);
+                                            if (getView() != null) {
+                                                Snackbar.make(getView(), "Recipe removed from " + day, Snackbar.LENGTH_SHORT).show();
+                                            }
                                         })
                                         .addOnFailureListener(e -> {
                                             handleError("Error updating meal plan: " + e.getMessage());
                                             adapter.setDayLoading(day, false);
+                                            // Revert local change if update failed
+                                            mealDay.addRecipe(recipe);
+                                            adapter.notifyDataSetChanged();
                                         });
                             }
                         }

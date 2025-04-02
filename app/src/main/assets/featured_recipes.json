@@ -1,10 +1,10 @@
 {
   "featured_recipes": [
     {
-      "id": "1",
+      "id": "featured_1",
       "name": "Pancakes",
       "description": "Fluffy homemade pancakes",
-      "imageUrl": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=480",
+      "imageUrl": "https://ichef.bbci.co.uk/food/ic/food_16x9_832/recipes/fluffyamericanpancak_74828_16x9.jpg",
       "cookTime": 20,
       "servings": 4,
       "category": "Breakfast",
@@ -131,6 +131,52 @@
         "Add vegetables and coconut milk",
         "Simmer until vegetables are tender"
       ]
+    },
+    {
+      "id": "featured_4",
+      "name": "Salad",
+      "description": "Fresh and healthy salad with vegetables and dressing",
+      "imageUrl": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=480",
+      "cookTime": 10,
+      "servings": 2,
+      "category": "Dinner",
+      "calories": 150,
+      "ingredients": [
+        {
+          "name": "Lettuce",
+          "quantity": 1,
+          "unit": "cup",
+          "type": "Vegetables",
+          "price": 20
+        },
+        {
+          "name": "Tomatoes",
+          "quantity": 2,
+          "unit": "piece",
+          "type": "Vegetables",
+          "price": 15
+        },
+        {
+          "name": "Cucumber",
+          "quantity": 1,
+          "unit": "piece",
+          "type": "Vegetables",
+          "price": 10
+        },
+        {
+          "name": "Dressing",
+          "quantity": 2,
+          "unit": "tbsp",
+          "type": "Dressing",
+          "price": 30
+        }
+      ],
+      "instructions": [
+        "Chop all vegetables",
+        "Mix vegetables and dressing",
+        "Serve chilled"
+      ]
     }
   ]
+  
 } 

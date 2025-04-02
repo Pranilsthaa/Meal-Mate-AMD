@@ -22,11 +22,14 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class RecipeDetailsFragment extends Fragment {
     private FirebaseFirestore db;
@@ -66,16 +69,118 @@ public class RecipeDetailsFragment extends Fragment {
     }
 
     private void loadRecipeDetails() {
-        db.collection("recipes").document(recipeId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        updateUI(documentSnapshot);
+        // Check if this is a featured recipe (IDs starting with "featured_")
+        if (recipeId != null && recipeId.startsWith("featured_")) {
+            // Load from featured recipes in assets
+            try {
+                InputStream is = requireContext().getAssets().open("featured_recipes.json");
+                int size = is.available();
+                byte[] buffer = new byte[size];
+                is.read(buffer);
+                is.close();
+                String json = new String(buffer, "UTF-8");
+
+                JSONObject jsonObject = new JSONObject(json);
+                JSONArray featuredRecipesArray = jsonObject.getJSONArray("featured_recipes");
+
+                // Find the matching featured recipe
+                for (int i = 0; i < featuredRecipesArray.length(); i++) {
+                    JSONObject recipeJson = featuredRecipesArray.getJSONObject(i);
+                    if (recipeId.equals(recipeJson.getString("id"))) {
+                        updateUIForFeaturedRecipe(recipeJson);
+                        return;
                     }
-                })
-                .addOnFailureListener(e -> {
-                    Snackbar.make(root, "Error loading recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-                });
+                }
+                // If we get here, recipe wasn't found
+                handleError("Featured recipe not found");
+            } catch (Exception e) {
+                handleError("Error loading featured recipe: " + e.getMessage());
+            }
+        } else {
+            // Load from Firestore as usual
+            db.collection("recipes").document(recipeId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            updateUI(documentSnapshot);
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Snackbar.make(root, "Error loading recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                    });
+        }
+    }
+
+    private void updateUIForFeaturedRecipe(JSONObject recipeJson) throws Exception {
+        try {
+            // Update recipe image
+            ImageView recipeImage = root.findViewById(R.id.recipeImage);
+            String imageUrl = recipeJson.getString("imageUrl");
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                Glide.with(this)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.placeholder_recipe)
+                        .error(R.drawable.placeholder_recipe)
+                        .centerCrop()
+                        .into(recipeImage);
+            } else {
+                recipeImage.setImageResource(R.drawable.placeholder_recipe);
+            }
+
+            // Update basic info
+            TextView nameText = root.findViewById(R.id.recipeName);
+            TextView descriptionText = root.findViewById(R.id.recipeDescription);
+            TextView categoryText = root.findViewById(R.id.recipeCategory);
+            TextView cookingTimeText = root.findViewById(R.id.cookingTime);
+            TextView servingsText = root.findViewById(R.id.servings);
+            TextView totalPriceText = root.findViewById(R.id.totalPrice);
+
+            nameText.setText(recipeJson.getString("name"));
+            descriptionText.setText(recipeJson.getString("description"));
+            categoryText.setText(recipeJson.getString("category"));
+            cookingTimeText.setText(recipeJson.getInt("cookTime") + " min");
+            servingsText.setText(recipeJson.getInt("servings") + " servings");
+
+            // Calculate total price from ingredients
+            double totalPrice = 0.0;
+            JSONArray ingredientsArray = recipeJson.getJSONArray("ingredients");
+            List<String> displayIngredients = new ArrayList<>();
+            
+            for (int i = 0; i < ingredientsArray.length(); i++) {
+                JSONObject ingredientJson = ingredientsArray.getJSONObject(i);
+                String name = ingredientJson.getString("name");
+                double quantity = ingredientJson.optDouble("quantity", 1.0);
+                String unit = ingredientJson.optString("unit", "unit");
+                double price = ingredientJson.optDouble("price", 0.0);
+                
+                totalPrice += price;
+                
+                String displayString = quantity > 0 ? 
+                    String.format("%.1f %s %s", quantity, unit, name) : name;
+                displayIngredients.add(displayString);
+            }
+            
+            totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
+
+            // Setup ingredients list
+            RecyclerView ingredientsRecyclerView = root.findViewById(R.id.ingredientsRecyclerView);
+            ingredientsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+            ingredientsRecyclerView.setAdapter(new IngredientsAdapter(displayIngredients));
+
+            // Setup instructions list
+            RecyclerView instructionsRecyclerView = root.findViewById(R.id.instructionsRecyclerView);
+            JSONArray instructionsArray = recipeJson.getJSONArray("instructions");
+            List<String> instructions = new ArrayList<>();
+            for (int i = 0; i < instructionsArray.length(); i++) {
+                instructions.add(instructionsArray.getString(i));
+            }
+            instructionsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+            instructionsRecyclerView.setAdapter(new InstructionsAdapter(instructions));
+
+        } catch (Exception e) {
+            handleError("Error updating UI for featured recipe: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void updateUI(DocumentSnapshot document) {

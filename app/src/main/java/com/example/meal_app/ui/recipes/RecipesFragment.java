@@ -23,6 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import com.google.firebase.firestore.FieldValue;
+import androidx.core.content.ContextCompat;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.InputStream;
 
 public class RecipesFragment extends Fragment {
 
@@ -64,7 +70,11 @@ public class RecipesFragment extends Fragment {
     private void setupSwipeToDelete() {
         ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0,
                 ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
-            private float currentSwipeX = 0f;
+
+            private final ColorDrawable backgroundDelete = new ColorDrawable(ContextCompat.getColor(getContext(), R.color.delete_red));
+            private final ColorDrawable backgroundEdit = new ColorDrawable(ContextCompat.getColor(getContext(), R.color.edit_blue));
+            private final Drawable iconDelete = ContextCompat.getDrawable(getContext(), R.drawable.ic_delete);
+            private final Drawable iconEdit = ContextCompat.getDrawable(getContext(), R.drawable.ic_edit);
 
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder,
@@ -74,74 +84,70 @@ public class RecipesFragment extends Fragment {
 
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                // Reset the item position since we're handling the swipe manually
-                adapter.notifyItemChanged(viewHolder.getAdapterPosition());
+                int position = viewHolder.getAdapterPosition();
+                if (position == RecyclerView.NO_POSITION) {
+                    return;
+                }
+                Recipe recipe = recipes.get(position);
+
+                if (direction == ItemTouchHelper.LEFT) {
+                    recipes.remove(position);
+                    adapter.notifyItemRemoved(position);
+                    showUndoSnackbar(recipe, position);
+                } else {
+                    editRecipe(recipe);
+                    adapter.notifyItemChanged(position);
+                }
             }
 
             @Override
             public void onChildDraw(@NonNull android.graphics.Canvas c, @NonNull RecyclerView recyclerView,
                                   @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY,
                                   int actionState, boolean isCurrentlyActive) {
-                
+
                 View itemView = viewHolder.itemView;
-                View foregroundView = itemView.findViewById(R.id.foreground);
-                View editAction = itemView.findViewById(R.id.editAction);
-                View deleteAction = itemView.findViewById(R.id.deleteAction);
-                
-                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
-                    if (isCurrentlyActive) {
-                        currentSwipeX = dX;
-                        
-                        if (dX > 0) { // Right swipe
-                            editAction.setVisibility(View.VISIBLE);
-                            deleteAction.setVisibility(View.GONE);
-                            foregroundView.setTranslationX(dX);
-                            
-                            // Set click listener for edit button
-                            editAction.setOnClickListener(v -> {
-                                int position = viewHolder.getAdapterPosition();
-                                if (position != RecyclerView.NO_POSITION) {
-                                    Recipe recipe = recipes.get(position);
-                                    editRecipe(recipe);
-                                }
-                            });
-                        } else if (dX < 0) { // Left swipe
-                            deleteAction.setVisibility(View.VISIBLE);
-                            editAction.setVisibility(View.GONE);
-                            foregroundView.setTranslationX(dX);
-                            
-                            // Set click listener for delete button
-                            deleteAction.setOnClickListener(v -> {
-                                int position = viewHolder.getAdapterPosition();
-                                if (position != RecyclerView.NO_POSITION) {
-                                    Recipe recipe = recipes.get(position);
-                                    deleteRecipeAndIngredients(recipe, position);
-                                }
-                            });
-                        }
-                    } else {
-                        // Keep the swipe position when touch is released
-                        foregroundView.setTranslationX(currentSwipeX);
-                    }
+                int iconMargin = (itemView.getHeight() - iconDelete.getIntrinsicHeight()) / 2;
+                int iconTop = itemView.getTop() + (itemView.getHeight() - iconDelete.getIntrinsicHeight()) / 2;
+                int iconBottom = iconTop + iconDelete.getIntrinsicHeight();
+
+                if (dX > 0) {
+                    int iconLeft = itemView.getLeft() + iconMargin;
+                    int iconRight = itemView.getLeft() + iconMargin + iconEdit.getIntrinsicWidth();
+                    iconEdit.setBounds(iconLeft, iconTop, iconRight, iconBottom);
+                    backgroundEdit.setBounds(itemView.getLeft(), itemView.getTop(),
+                            itemView.getLeft() + ((int) dX), itemView.getBottom());
+                    backgroundEdit.draw(c);
+                    iconEdit.draw(c);
+                } else if (dX < 0) {
+                    int iconLeft = itemView.getRight() - iconMargin - iconDelete.getIntrinsicWidth();
+                    int iconRight = itemView.getRight() - iconMargin;
+                    iconDelete.setBounds(iconLeft, iconTop, iconRight, iconBottom);
+                    backgroundDelete.setBounds(itemView.getRight() + ((int) dX), itemView.getTop(),
+                            itemView.getRight(), itemView.getBottom());
+                    backgroundDelete.draw(c);
+                    iconDelete.draw(c);
+                } else {
+                    backgroundEdit.setBounds(0, 0, 0, 0);
+                    backgroundDelete.setBounds(0, 0, 0, 0);
+                    backgroundEdit.draw(c);
+                    backgroundDelete.draw(c);
                 }
 
-                if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
-                    // Reset everything when idle
-                    currentSwipeX = 0f;
-                    foregroundView.setTranslationX(0f);
-                    editAction.setVisibility(View.GONE);
-                    deleteAction.setVisibility(View.GONE);
-                }
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
             }
 
             @Override
-            public float getSwipeThreshold(@NonNull RecyclerView.ViewHolder viewHolder) {
-                return Float.MAX_VALUE; // Prevent auto-swipe
+            public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                final View foregroundView = ((RecipeCardAdapter.RecipeViewHolder) viewHolder).foregroundView;
+                getDefaultUIUtil().clearView(foregroundView);
             }
 
             @Override
-            public float getSwipeEscapeVelocity(float defaultValue) {
-                return Float.MAX_VALUE; // Prevent swipe-to-dismiss
+            public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+                if (viewHolder != null) {
+                    final View foregroundView = ((RecipeCardAdapter.RecipeViewHolder) viewHolder).foregroundView;
+                    getDefaultUIUtil().onSelected(foregroundView);
+                }
             }
         };
 
@@ -156,6 +162,20 @@ public class RecipesFragment extends Fragment {
 
     private void loadRecipes() {
         String userId = auth.getCurrentUser().getUid();
+        String userName = auth.getCurrentUser().getDisplayName();
+        
+        // Update the title with user's name
+        if (binding.recipesTitle != null) {
+            String title = "Recipes";
+            if (userName != null && !userName.isEmpty()) {
+                title += " • " + userName;
+            }
+            binding.recipesTitle.setText(title);
+            binding.recipesTitle.setBackgroundResource(0); // Remove background
+            binding.recipesTitle.setTextColor(getResources().getColor(android.R.color.black, null));
+        }
+
+        // Only load user recipes
         db.collection("recipes")
                 .whereEqualTo("userId", userId)
                 .get()
@@ -175,6 +195,7 @@ public class RecipesFragment extends Fragment {
                         recipe.setTotalPrice(document.getDouble("totalPrice") != null ? 
                                 document.getDouble("totalPrice") : 0.0);
                         recipe.setUserId(document.getString("userId"));
+                        recipe.setFeatured(false);
                         recipes.add(recipe);
                     }
                     adapter.notifyDataSetChanged();
@@ -182,57 +203,115 @@ public class RecipesFragment extends Fragment {
                 .addOnFailureListener(e -> showError("Error loading recipes: " + e.getMessage()));
     }
 
-    private void deleteRecipeAndIngredients(Recipe recipe, int position) {
-        String userId = auth.getCurrentUser().getUid();
-        
-        // First, get the recipe's ingredients
+    private void showUndoSnackbar(final Recipe recipe, final int position) {
+        Snackbar snackbar = Snackbar.make(binding.getRoot(), recipe.getName() + " deleted", Snackbar.LENGTH_LONG);
+        snackbar.setAction("UNDO", view -> {
+            recipes.add(position, recipe);
+            adapter.notifyItemInserted(position);
+            binding.recipesRecyclerView.scrollToPosition(position);
+        });
+        snackbar.addCallback(new Snackbar.Callback() {
+            @Override
+            public void onDismissed(Snackbar transientBottomBar, int event) {
+                if (event != Snackbar.Callback.DISMISS_EVENT_ACTION) {
+                    deleteRecipeAndIngredientsFromFirestore(recipe);
+                }
+            }
+        });
+        snackbar.show();
+    }
+
+    private void deleteRecipeAndIngredientsFromFirestore(Recipe recipe) {
+        String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : null;
+        if (userId == null) {
+            showError("Error: User not logged in.");
+            return;
+        }
+
+        // Don't try to delete featured recipes from Firestore
+        if (recipe.isFeatured()) {
+            recipes.remove(recipe);
+            adapter.notifyDataSetChanged();
+            return;
+        }
+
         db.collection("recipes").document(recipe.getId()).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        List<String> ingredients = (List<String>) documentSnapshot.get("ingredients");
+                        Object ingredientsObj = documentSnapshot.get("ingredients");
                         String recipeName = documentSnapshot.getString("name");
-                        
-                        if (ingredients != null && !ingredients.isEmpty() && recipeName != null) {
-                            // Create a map of fields to delete
+                        List<String> ingredientNames = new ArrayList<>();
+
+                        if (ingredientsObj instanceof List<?>) {
+                            List<?> ingredientsList = (List<?>) ingredientsObj;
+                            for (Object ingredient : ingredientsList) {
+                                if (ingredient instanceof String) {
+                                    // If it's a string, add it directly
+                                    ingredientNames.add((String) ingredient);
+                                } else if (ingredient instanceof Map) {
+                                    // If it's a map, get the name field
+                                    @SuppressWarnings("unchecked")
+                                    Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
+                                    String name = (String) ingredientMap.get("name");
+                                    if (name != null) {
+                                        ingredientNames.add(name);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!ingredientNames.isEmpty() && recipeName != null) {
                             Map<String, Object> updates = new HashMap<>();
-                            for (String ingredient : ingredients) {
-                                String ingredientId = recipeName + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
+                            for (String ingredient : ingredientNames) {
+                                String ingredientId = recipeName.toLowerCase().replaceAll("[^a-z0-9]", "_")
+                                        + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
                                 updates.put(ingredientId, FieldValue.delete());
                             }
 
-                            // Delete ingredients from grocery list
                             db.collection("groceryLists").document(userId)
                                     .update(updates)
-                                    .addOnSuccessListener(aVoid -> {
-                                        // After ingredients are deleted, delete the recipe
-                                        deleteRecipe(recipe, position);
-                                    })
-                                    .addOnFailureListener(e -> showError("Error removing ingredients: " + e.getMessage()));
+                                    .addOnSuccessListener(aVoid -> deleteRecipeDocument(recipe))
+                                    .addOnFailureListener(e -> {
+                                        System.err.println("Error removing ingredients from grocery list: " + e.getMessage());
+                                        deleteRecipeDocument(recipe);
+                                    });
                         } else {
-                            // If no ingredients, just delete the recipe
-                            deleteRecipe(recipe, position);
+                            deleteRecipeDocument(recipe);
                         }
+                    } else {
+                        showError("Recipe document not found for deletion.");
                     }
                 })
-                .addOnFailureListener(e -> showError("Error getting recipe details: " + e.getMessage()));
+                .addOnFailureListener(e -> showError("Error getting recipe details for deletion: " + e.getMessage()));
     }
 
-    private void deleteRecipe(Recipe recipe, int position) {
+    private void deleteRecipeDocument(Recipe recipe) {
         db.collection("recipes").document(recipe.getId())
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    recipes.remove(position);
-                    adapter.notifyItemRemoved(position);
-                    showError("Recipe deleted");
+                    System.out.println("Recipe " + recipe.getId() + " deleted from Firestore.");
                 })
-                .addOnFailureListener(e -> showError("Error deleting recipe: " + e.getMessage()));
+                .addOnFailureListener(e -> showError("Error deleting recipe from Firestore: " + e.getMessage()));
+    }
+
+    private void deleteRecipeAndIngredients(Recipe recipe, int position) {
+        deleteRecipeAndIngredientsFromFirestore(recipe);
+        if (position >= 0 && position < recipes.size() && recipes.get(position).getId().equals(recipe.getId())) {
+            recipes.remove(position);
+            adapter.notifyItemRemoved(position);
+        }
     }
 
     private void editRecipe(Recipe recipe) {
         Bundle bundle = new Bundle();
         bundle.putString("recipeId", recipe.getId());
-        Navigation.findNavController(requireView())
-                .navigate(R.id.action_navigation_recipes_to_editRecipeFragment, bundle);
+        try {
+            Navigation.findNavController(requireView())
+                    .navigate(R.id.action_navigation_recipes_to_editRecipeFragment, bundle);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            showError("Could not navigate to edit recipe.");
+            System.err.println("Navigation error: " + e.getMessage());
+        }
     }
 
     private void showError(String message) {

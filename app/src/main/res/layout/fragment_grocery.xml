@@ -27,6 +27,15 @@
             android:textStyle="bold"/>
 
         <ImageButton
+            android:id="@+id/speakerButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_volume_up"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/white"
+            android:contentDescription="Read grocery list aloud"/>
+
+        <ImageButton
             android:id="@+id/shareButton"
             android:layout_width="48dp"
             android:layout_height="48dp"

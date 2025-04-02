@@ -52,6 +52,8 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.widget.SearchView;
 import android.widget.Toast;
+import android.speech.tts.TextToSpeech;
+import java.util.Locale;
 
 public class GroceryFragment extends Fragment implements GroceryAdapter.OnGroceryItemListener, SensorEventListener {
 
@@ -90,6 +92,10 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
     private SearchView searchView;
 
+    private TextToSpeech textToSpeech;
+    private ImageButton speakerButton;
+    private boolean isSpeaking = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,6 +110,18 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         if (sensorManager != null) {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
+
+        // Initialize TextToSpeech
+        textToSpeech = new TextToSpeech(requireContext(), status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                int result = textToSpeech.setLanguage(Locale.US);
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Toast.makeText(requireContext(), "Text to speech language not supported", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(requireContext(), "Text to speech initialization failed", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -119,6 +137,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             searchView = root.findViewById(R.id.searchView);
             RecyclerView recyclerView = root.findViewById(R.id.groceryRecyclerView);
             shareButton = root.findViewById(R.id.shareButton);
+            speakerButton = root.findViewById(R.id.speakerButton);
 
             // Setup RecyclerView
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -142,6 +161,9 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                     return true;
                 }
             });
+
+            // Setup speaker button
+            speakerButton.setOnClickListener(v -> readGroceryList());
 
             // Check if user is logged in
             if (auth.getCurrentUser() != null) {
@@ -869,5 +891,45 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         if (getContext() != null) {
             Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void readGroceryList() {
+        if (filteredItems == null || filteredItems.isEmpty()) {
+            Toast.makeText(requireContext(), "No items in the grocery list", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (isSpeaking) {
+            textToSpeech.stop();
+            isSpeaking = false;
+            return;
+        }
+
+        StringBuilder textToRead = new StringBuilder("Here's your grocery list: ");
+        for (Object item : filteredItems) {
+            if (item instanceof GroceryItem) {
+                GroceryItem groceryItem = (GroceryItem) item;
+                textToRead.append(groceryItem.getName())
+                        .append(", quantity: ")
+                        .append(groceryItem.getQuantity())
+                        .append(". ");
+                
+                if (groceryItem.isPurchased()) {
+                    textToRead.append("Already purchased. ");
+                }
+            }
+        }
+
+        isSpeaking = true;
+        textToSpeech.speak(textToRead.toString(), TextToSpeech.QUEUE_FLUSH, null, "grocery_list");
+    }
+
+    @Override
+    public void onDestroy() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+        super.onDestroy();
     }
 }

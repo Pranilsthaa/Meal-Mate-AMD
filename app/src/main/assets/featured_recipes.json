@@ -176,7 +176,609 @@
         "Mix vegetables and dressing",
         "Serve chilled"
       ]
-    }
+    },
+      {
+        "id": "featured_5",
+        "name": "Spaghetti Carbonara",
+        "description": "Classic Italian pasta with creamy egg sauce and bacon",
+        "imageUrl": "https://images.unsplash.com/photo-1588013273468-315fd88ea34c?w=480",
+        "cookTime": 25,
+        "servings": 2,
+        "category": "Dinner",
+        "calories": 550,
+        "ingredients": [
+          {
+            "name": "Spaghetti",
+            "quantity": 200,
+            "unit": "g",
+            "price": 50,
+            "type": "Pasta"
+          },
+          {
+            "name": "Eggs",
+            "quantity": 2,
+            "unit": "piece",
+            "price": 20,
+            "type": "Dairy"
+          },
+          {
+            "name": "Bacon",
+            "quantity": 100,
+            "unit": "g",
+            "price": 120,
+            "type": "Meat"
+          },
+          {
+            "name": "Parmesan Cheese",
+            "quantity": 50,
+            "unit": "g",
+            "price": 80,
+            "type": "Dairy"
+          }
+        ],
+        "instructions": [
+          "Cook spaghetti al dente",
+          "Fry bacon until crispy",
+          "Whisk eggs with grated parmesan",
+          "Combine all ingredients while hot",
+          "Season with black pepper"
+        ]
+      },
+      {
+        "id": "featured_6",
+        "name": "Beef Burger",
+        "description": "Juicy beef patty with cheese and fresh vegetables",
+        "imageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=480",
+        "cookTime": 15,
+        "servings": 1,
+        "category": "Lunch",
+        "calories": 700,
+        "ingredients": [
+          {
+            "name": "Beef Patty",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 150,
+            "type": "Meat"
+          },
+          {
+            "name": "Burger Bun",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 30,
+            "type": "Bakery"
+          },
+          {
+            "name": "Cheese Slice",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 25,
+            "type": "Dairy"
+          },
+          {
+            "name": "Lettuce",
+            "quantity": 2,
+            "unit": "leaves",
+            "price": 10,
+            "type": "Vegetables"
+          }
+        ],
+        "instructions": [
+          "Grill the beef patty",
+          "Toast the burger bun",
+          "Assemble with cheese and vegetables",
+          "Add your favorite sauces"
+        ]
+      },
+      {
+        "id": "featured_7",
+        "name": "Greek Salad",
+        "description": "Fresh Mediterranean salad with feta cheese and olives",
+        "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=480",
+        "cookTime": 10,
+        "servings": 2,
+        "category": "Lunch",
+        "calories": 300,
+        "ingredients": [
+          {
+            "name": "Cucumber",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 15,
+            "type": "Vegetables"
+          },
+          {
+            "name": "Tomatoes",
+            "quantity": 2,
+            "unit": "piece",
+            "price": 20,
+            "type": "Vegetables"
+          },
+          {
+            "name": "Feta Cheese",
+            "quantity": 100,
+            "unit": "g",
+            "price": 120,
+            "type": "Dairy"
+          },
+          {
+            "name": "Olives",
+            "quantity": 50,
+            "unit": "g",
+            "price": 60,
+            "type": "Preserved"
+          }
+        ],
+        "instructions": [
+          "Chop vegetables into chunks",
+          "Add olives and feta cheese",
+          "Drizzle with olive oil",
+          "Sprinkle oregano"
+        ]
+      },
+      {
+        "id": "featured_8",
+        "name": "Chocolate Chip Cookies",
+        "description": "Classic homemade cookies with chocolate chips",
+        "imageUrl": "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=480",
+        "cookTime": 15,
+        "servings": 12,
+        "category": "Dessert",
+        "calories": 180,
+        "ingredients": [
+          {
+            "name": "Flour",
+            "quantity": 2,
+            "unit": "cup",
+            "price": 30,
+            "type": "Grains"
+          },
+          {
+            "name": "Chocolate Chips",
+            "quantity": 1,
+            "unit": "cup",
+            "price": 100,
+            "type": "Baking"
+          },
+          {
+            "name": "Butter",
+            "quantity": 150,
+            "unit": "g",
+            "price": 80,
+            "type": "Dairy"
+          }
+        ],
+        "instructions": [
+          "Cream butter and sugar",
+          "Mix in dry ingredients",
+          "Fold in chocolate chips",
+          "Bake at 180°C for 10-12 minutes"
+        ]
+      },
+      {
+        "id": "featured_9",
+        "name": "Margherita Pizza",
+        "description": "Classic pizza with tomato sauce and mozzarella",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=480",
+        "cookTime": 20,
+        "servings": 2,
+        "category": "Dinner",
+        "calories": 800,
+        "ingredients": [
+          {
+            "name": "Pizza Dough",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 50,
+            "type": "Bakery"
+          },
+          {
+            "name": "Tomato Sauce",
+            "quantity": 100,
+            "unit": "ml",
+            "price": 30,
+            "type": "Sauces"
+          },
+          {
+            "name": "Mozzarella Cheese",
+            "quantity": 200,
+            "unit": "g",
+            "price": 150,
+            "type": "Dairy"
+          }
+        ],
+        "instructions": [
+          "Roll out the pizza dough",
+          "Spread tomato sauce",
+          "Add mozzarella cheese",
+          "Bake at 220°C for 15 minutes"
+        ]
+      },
+      {
+        "id": "featured_10",
+        "name": "Avocado Toast",
+        "description": "Healthy breakfast toast with mashed avocado",
+        "imageUrl": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=480",
+        "cookTime": 5,
+        "servings": 1,
+        "category": "Breakfast",
+        "calories": 250,
+        "ingredients": [
+          {
+            "name": "Bread",
+            "quantity": 1,
+            "unit": "slice",
+            "price": 15,
+            "type": "Bakery"
+          },
+          {
+            "name": "Avocado",
+            "quantity": 0.5,
+            "unit": "piece",
+            "price": 40,
+            "type": "Fruits"
+          },
+          {
+            "name": "Egg",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 10,
+            "type": "Dairy"
+          }
+        ],
+        "instructions": [
+          "Toast the bread",
+          "Mash the avocado",
+          "Fry or poach the egg",
+          "Assemble all ingredients"
+        ]
+      },
+      {
+        "id": "featured_11",
+        "name": "Beef Tacos",
+        "description": "Mexican-style tacos with seasoned ground beef",
+        "imageUrl": "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=480",
+        "cookTime": 20,
+        "servings": 3,
+        "category": "Dinner",
+        "calories": 400,
+        "ingredients": [
+          {
+            "name": "Taco Shells",
+            "quantity": 6,
+            "unit": "piece",
+            "price": 60,
+            "type": "Grains"
+          },
+          {
+            "name": "Ground Beef",
+            "quantity": 300,
+            "unit": "g",
+            "price": 180,
+            "type": "Meat"
+          },
+          {
+            "name": "Taco Seasoning",
+            "quantity": 1,
+            "unit": "packet",
+            "price": 30,
+            "type": "Spices"
+          }
+        ],
+        "instructions": [
+          "Brown the ground beef",
+          "Add taco seasoning",
+          "Warm taco shells",
+          "Assemble with toppings"
+        ]
+      },
+      {
+        "id": "featured_12",
+        "name": "Mushroom Risotto",
+        "description": "Creamy Italian rice dish with mushrooms",
+        "imageUrl": "https://images.unsplash.com/photo-1633945274309-2c16f9686f71?w=480",
+        "cookTime": 35,
+        "servings": 2,
+        "category": "Dinner",
+        "calories": 450,
+        "ingredients": [
+          {
+            "name": "Arborio Rice",
+            "quantity": 1,
+            "unit": "cup",
+            "price": 80,
+            "type": "Grains"
+          },
+          {
+            "name": "Mushrooms",
+            "quantity": 200,
+            "unit": "g",
+            "price": 100,
+            "type": "Vegetables"
+          },
+          {
+            "name": "White Wine",
+            "quantity": 100,
+            "unit": "ml",
+            "price": 120,
+            "type": "Alcohol"
+          }
+        ],
+        "instructions": [
+          "Sauté mushrooms",
+          "Toast rice in pan",
+          "Add wine and broth gradually",
+          "Stir until creamy"
+        ]
+      },
+      {
+        "id": "featured_13",
+        "name": "Blueberry Smoothie",
+        "description": "Refreshing smoothie with blueberries and yogurt",
+        "imageUrl": "https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=480",
+        "cookTime": 5,
+        "servings": 1,
+        "category": "Breakfast",
+        "calories": 200,
+        "ingredients": [
+          {
+            "name": "Blueberries",
+            "quantity": 1,
+            "unit": "cup",
+            "price": 70,
+            "type": "Fruits"
+          },
+          {
+            "name": "Yogurt",
+            "quantity": 150,
+            "unit": "ml",
+            "price": 40,
+            "type": "Dairy"
+          },
+          {
+            "name": "Honey",
+            "quantity": 1,
+            "unit": "tbsp",
+            "price": 20,
+            "type": "Sweeteners"
+          }
+        ],
+        "instructions": [
+          "Blend all ingredients",
+          "Add ice if desired",
+          "Serve chilled"
+        ]
+      },
+      {
+        "id": "featured_14",
+        "name": "Grilled Salmon",
+        "description": "Healthy grilled salmon with lemon",
+        "imageUrl": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=480",
+        "cookTime": 15,
+        "servings": 1,
+        "category": "Dinner",
+        "calories": 350,
+        "ingredients": [
+          {
+            "name": "Salmon Fillet",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 250,
+            "type": "Seafood"
+          },
+          {
+            "name": "Lemon",
+            "quantity": 0.5,
+            "unit": "piece",
+            "price": 15,
+            "type": "Fruits"
+          },
+          {
+            "name": "Olive Oil",
+            "quantity": 1,
+            "unit": "tbsp",
+            "price": 30,
+            "type": "Oils"
+          }
+        ],
+        "instructions": [
+          "Season salmon",
+          "Grill for 4-5 minutes per side",
+          "Squeeze lemon before serving"
+        ]
+      },
+      {
+        "id": "featured_15",
+        "name": "Chicken Noodle Soup",
+        "description": "Comforting soup with chicken and noodles",
+        "imageUrl": "https://images.unsplash.com/photo-1558021211-6d1403321394?w=480",
+        "cookTime": 30,
+        "servings": 4,
+        "category": "Lunch",
+        "calories": 300,
+        "ingredients": [
+          {
+            "name": "Chicken Breast",
+            "quantity": 1,
+            "unit": "piece",
+            "price": 120,
+            "type": "Meat"
+          },
+          {
+            "name": "Egg Noodles",
+            "quantity": 200,
+            "unit": "g",
+            "price": 50,
+            "type": "Pasta"
+          },
+          {
+            "name": "Carrots",
+            "quantity": 2,
+            "unit": "piece",
+            "price": 20,
+            "type": "Vegetables"
+          }
+        ],
+        "instructions": [
+          "Boil chicken to make broth",
+          "Shred cooked chicken",
+          "Add vegetables and noodles",
+          "Simmer until noodles are cooked"
+        ]
+      },
+      {
+        "id": "featured_16",
+        "name": "Banana Bread",
+        "description": "Moist and sweet banana bread",
+        "imageUrl": "https://images.unsplash.com/photo-1587131374855-bf3e5b10cbda?w=480",
+        "cookTime": 60,
+        "servings": 8,
+        "category": "Dessert",
+        "calories": 250,
+        "ingredients": [
+          {
+            "name": "Ripe Bananas",
+            "quantity": 3,
+            "unit": "piece",
+            "price": 30,
+            "type": "Fruits"
+          },
+          {
+            "name": "Flour",
+            "quantity": 2,
+            "unit": "cup",
+            "price": 30,
+            "type": "Grains"
+          },
+          {
+            "name": "Walnuts",
+            "quantity": 50,
+            "unit": "g",
+            "price": 80,
+            "type": "Nuts"
+          }
+        ],
+        "instructions": [
+          "Mash bananas",
+          "Mix all ingredients",
+          "Bake at 180°C for 50-55 minutes"
+        ]
+      },
+      {
+        "id": "featured_17",
+        "name": "Shrimp Scampi",
+        "description": "Garlic butter shrimp with pasta",
+        "imageUrl": "https://images.unsplash.com/photo-1601758003122-53c40e686a19?w=480",
+        "cookTime": 20,
+        "servings": 2,
+        "category": "Dinner",
+        "calories": 500,
+        "ingredients": [
+          {
+            "name": "Shrimp",
+            "quantity": 300,
+            "unit": "g",
+            "price": 300,
+            "type": "Seafood"
+          },
+          {
+            "name": "Linguine",
+            "quantity": 200,
+            "unit": "g",
+            "price": 50,
+            "type": "Pasta"
+          },
+          {
+            "name": "Garlic",
+            "quantity": 4,
+            "unit": "cloves",
+            "price": 10,
+            "type": "Vegetables"
+          }
+        ],
+        "instructions": [
+          "Cook pasta al dente",
+          "Sauté shrimp in garlic butter",
+          "Combine and serve"
+        ]
+      },
+      {
+        "id": "featured_18",
+        "name": "French Toast",
+        "description": "Classic breakfast toast with cinnamon",
+        "imageUrl": "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=480",
+        "cookTime": 10,
+        "servings": 2,
+        "category": "Breakfast",
+        "calories": 300,
+        "ingredients": [
+          {
+            "name": "Bread",
+            "quantity": 4,
+            "unit": "slices",
+            "price": 40,
+            "type": "Bakery"
+          },
+          {
+            "name": "Eggs",
+            "quantity": 2,
+            "unit": "piece",
+            "price": 20,
+            "type": "Dairy"
+          },
+          {
+            "name": "Cinnamon",
+            "quantity": 1,
+            "unit": "tsp",
+            "price": 10,
+            "type": "Spices"
+          }
+        ],
+        "instructions": [
+          "Whisk eggs with milk and cinnamon",
+          "Dip bread in mixture",
+          "Fry until golden brown"
+        ]
+      },
+      {
+        "id": "featured_19",
+        "name": "Vegetable Lasagna",
+        "description": "Layered pasta with vegetables and cheese",
+        "imageUrl": "https://images.unsplash.com/photo-1629115916087-7e8c114a24a1?w=480",
+        "cookTime": 45,
+        "servings": 6,
+        "category": "Dinner",
+        "calories": 400,
+        "ingredients": [
+          {
+            "name": "Lasagna Sheets",
+            "quantity": 12,
+            "unit": "piece",
+            "price": 80,
+            "type": "Pasta"
+          },
+          {
+            "name": "Ricotta Cheese",
+            "quantity": 250,
+            "unit": "g",
+            "price": 150,
+            "type": "Dairy"
+          },
+          {
+            "name": "Spinach",
+            "quantity": 200,
+            "unit": "g",
+            "price": 50,
+            "type": "Vegetables"
+          }
+        ],
+        "instructions": [
+          "Layer pasta, vegetables and cheese",
+          "Repeat layers",
+          "Bake at 190°C for 35-40 minutes"
+        ]
+      }
+
   ]
   
 } 

@@ -5,9 +5,15 @@
     android:id="@+id/recipeCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="4dp">
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="#2E2E2E"
+    android:clickable="true"
+    android:focusable="true"
+    app:rippleColor="#33FFFFFF"
+    android:foreground="?attr/selectableItemBackground">
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -26,7 +32,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="#4285F4"
+                android:background="#1A73E8"
                 android:gravity="start|center_vertical"
                 android:paddingStart="24dp"
                 android:text="Edit"
@@ -40,7 +46,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="#EA4335"
+                android:background="#D93025"
                 android:gravity="end|center_vertical"
                 android:paddingEnd="24dp"
                 android:text="Delete"
@@ -54,14 +60,15 @@
             android:id="@+id/foreground"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/white"
-            android:padding="8dp">
+            android:background="#2E2E2E"
+            android:padding="12dp">
 
-            <ImageView
+            <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/recipeImage"
                 android:layout_width="120dp"
                 android:layout_height="120dp"
                 android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/RoundedImageView"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"/>
@@ -73,7 +80,9 @@
                 android:layout_marginStart="16dp"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="@android:color/black"
+                android:textColor="@color/white"
+                android:maxLines="2"
+                android:ellipsize="end"
                 app:layout_constraintStart_toEndOf="@id/recipeImage"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"/>
@@ -83,33 +92,66 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="8dp"
                 android:textSize="14sp"
-                android:textColor="@android:color/darker_gray"
+                android:textColor="@color/orange"
+                android:background="@drawable/category_background"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
                 app:layout_constraintStart_toEndOf="@id/recipeImage"
                 app:layout_constraintTop_toBottomOf="@id/recipeName"/>
 
-            <TextView
-                android:id="@+id/recipeTime"
+            <LinearLayout
+                android:id="@+id/timeLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="4dp"
-                android:textSize="14sp"
-                android:textColor="@android:color/darker_gray"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
                 app:layout_constraintStart_toEndOf="@id/recipeImage"
-                app:layout_constraintTop_toBottomOf="@id/recipeCategory"/>
+                app:layout_constraintTop_toBottomOf="@id/recipeCategory">
 
-            <TextView
-                android:id="@+id/recipeServings"
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_time"
+                    android:tint="@color/gray"/>
+
+                <TextView
+                    android:id="@+id/recipeTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/gray"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/servingsLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="4dp"
-                android:textSize="14sp"
-                android:textColor="@android:color/darker_gray"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
                 app:layout_constraintStart_toEndOf="@id/recipeImage"
-                app:layout_constraintTop_toBottomOf="@id/recipeTime"/>
+                app:layout_constraintTop_toBottomOf="@id/timeLayout">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_servings"
+                    android:tint="@color/gray"/>
+
+                <TextView
+                    android:id="@+id/recipeServings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/gray"/>
+            </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </FrameLayout>

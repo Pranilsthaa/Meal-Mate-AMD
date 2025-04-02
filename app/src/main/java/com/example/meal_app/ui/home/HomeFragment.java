@@ -345,6 +345,11 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 recipe.setId(documentSnapshot.getId());
                                 recipe.setName(documentSnapshot.getString("name"));
                                 recipe.setCategory(documentSnapshot.getString("category"));
+                                recipe.setImageUrl(documentSnapshot.getString("imageUrl")); // Hardcoded image URL
+                                recipe.setCookTime(documentSnapshot.getLong("cookTime") != null ? 
+                                    documentSnapshot.getLong("cookTime").intValue() : documentSnapshot.getLong("cookingTime").intValue());
+                                recipe.setServings(documentSnapshot.getLong("servings") != null ? 
+                                    documentSnapshot.getLong("servings").intValue() : 0);
                                 
                                 String category = recipe.getCategory().toLowerCase();
                                 Log.d("loghere", String.format("Recipe loaded - ID: %s, Name: %s, Category: %s", 

@@ -58,15 +58,36 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
         // Set recipe name
         holder.recipeName.setText(recipe.getName());
 
-        // Load recipe image using Glide
-        if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
-            Glide.with(holder.itemView.getContext())
-                    .load(recipe.getImageUrl())
+        // Load recipe image using Glide with better error handling
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            Log.d("loghere", "Loading image for " + recipe.getName() + ": " + imageUrl);
+            try {
+                Glide.with(holder.itemView.getContext())
+                    .load(imageUrl)
                     .placeholder(R.drawable.placeholder_image)
                     .error(R.drawable.error_image)
                     .centerCrop()
+                    .listener(new com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable>() {
+                        @Override
+                        public boolean onLoadFailed(@androidx.annotation.Nullable com.bumptech.glide.load.engine.GlideException e, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, boolean isFirstResource) {
+                            Log.e("loghere", "Failed to load image for " + recipe.getName() + ": " + e.getMessage());
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onResourceReady(android.graphics.drawable.Drawable resource, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
+                            Log.d("loghere", "Successfully loaded image for " + recipe.getName());
+                            return false;
+                        }
+                    })
                     .into(holder.recipeImage);
+            } catch (Exception e) {
+                Log.e("loghere", "Exception loading image for " + recipe.getName() + ": " + e.getMessage());
+                holder.recipeImage.setImageResource(R.drawable.placeholder_image);
+            }
         } else {
+            Log.d("loghere", "No image URL for " + recipe.getName() + ", using placeholder");
             holder.recipeImage.setImageResource(R.drawable.placeholder_image);
         }
 

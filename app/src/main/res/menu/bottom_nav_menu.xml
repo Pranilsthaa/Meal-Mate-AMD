@@ -13,12 +13,12 @@
 
     <item
         android:id="@+id/navigation_recipes"
-        android:icon="@drawable/ic_menu_book_black_24dp"
+        android:icon="@drawable/ic_recipes"
         android:title="@string/title_recipes" />
 
     <item
         android:id="@+id/navigation_grocery"
-        android:icon="@drawable/ic_shopping_cart_black_24dp"
+        android:icon="@drawable/ic_grocery"
         android:title="Grocery List" />
 
 </menu>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Bowl -->
+    <path
+        android:fillColor="#B0B0B0"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:pathData="M10,60 Q50,90 90,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:pathData="M20,60 Q50,80 80,60" />
+
+    <!-- Whisk handle -->
+    <path
+        android:fillColor="#B0B0B0"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:pathData="M60,10 L70,10 L70,40 L60,40 Z" />
+
+    <!-- Whisk wires -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:pathData="M50,40 Q55,60 50,70" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:pathData="M55,40 Q60,65 55,75" />
+</vector>

@@ -333,9 +333,36 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 recipe.setTotalPrice(totalPrice != null ? totalPrice : 0.0);
 
                                 // Convert Lists to arrays for ingredients and instructions
-                                List<String> ingredientsList = (List<String>) documentSnapshot.get("ingredients");
-                                if (ingredientsList != null) {
-                                    recipe.setIngredients(ingredientsList.toArray(new String[0]));
+                                Object ingredientsObj = documentSnapshot.get("ingredients");
+                                if (ingredientsObj instanceof List) {
+                                    List<?> ingredientsList = (List<?>) ingredientsObj;
+                                    List<String> displayIngredients = new ArrayList<>();
+                                    
+                                    for (Object ingredient : ingredientsList) {
+                                        if (ingredient instanceof String) {
+                                            // If it's already a string, add it directly
+                                            displayIngredients.add((String) ingredient);
+                                        } else if (ingredient instanceof Map) {
+                                            // If it's a map, format it as a string
+                                            @SuppressWarnings("unchecked")
+                                            Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
+                                            String name = (String) ingredientMap.get("name");
+                                            Object quantityObj = ingredientMap.get("quantity");
+                                            String unit = (String) ingredientMap.get("unit");
+                                            
+                                            if (name != null) {
+                                                double quantity = 1.0;
+                                                if (quantityObj instanceof Number) {
+                                                    quantity = ((Number) quantityObj).doubleValue();
+                                                }
+                                                
+                                                String displayString = quantity > 0 && unit != null ? 
+                                                    String.format("%.1f %s %s", quantity, unit, name) : name;
+                                                displayIngredients.add(displayString);
+                                            }
+                                        }
+                                    }
+                                    recipe.setIngredients(displayIngredients.toArray(new String[0]));
                                 } else {
                                     recipe.setIngredients(new String[0]);
                                 }

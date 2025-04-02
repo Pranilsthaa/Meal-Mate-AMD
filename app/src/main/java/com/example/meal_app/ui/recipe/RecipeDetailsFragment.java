@@ -113,7 +113,7 @@ public class RecipeDetailsFragment extends Fragment {
             categoryText.setText(document.getString("category") != null ? document.getString("category") : "Uncategorized");
 
             // Handle numeric values safely
-            Long cookingTime = document.getLong("cookTime");
+            Long cookingTime = document.getLong("cookTime") != null ? document.getLong("cookTime") : document.getLong("cookingTime");
             if (cookingTime != null) {
                 cookingTimeText.setText(cookingTime + " min");
             } else {
@@ -129,22 +129,32 @@ public class RecipeDetailsFragment extends Fragment {
                 handleError("servings is null or invalid");
             }
 
-            Double totalPrice = document.getDouble("totalPrice");
-            if (totalPrice != null) {
-                totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
-            } else {
-                totalPriceText.setText("N/A");
-                handleError("totalPrice is null or invalid");
+            // Calculate total price from ingredients
+            double totalPrice = 0.0;
+            Object ingredientsObj = document.get("ingredients");
+            if (ingredientsObj instanceof List) {
+                List<?> ingredientsList = (List<?>) ingredientsObj;
+                for (Object ingredient : ingredientsList) {
+                    if (ingredient instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
+                        Object priceObj = ingredientMap.get("price");
+                        
+                        if (priceObj instanceof Number) {
+                            totalPrice += ((Number) priceObj).doubleValue();
+                        }
+                    }
+                }
             }
+            
+            totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
 
             // Setup ingredients list with type checking
             RecyclerView ingredientsRecyclerView = root.findViewById(R.id.ingredientsRecyclerView);
-            Object ingredientsObj = document.get("ingredients");
-            List<String> displayIngredients = new ArrayList<>();
-            
             if (ingredientsObj instanceof List) {
                 List<?> ingredientsList = (List<?>) ingredientsObj;
                 if (ingredientsList != null && !ingredientsList.isEmpty()) {
+                    List<String> displayIngredients = new ArrayList<>();
                     for (Object ingredient : ingredientsList) {
                         if (ingredient instanceof String) {
                             // If it's already a string, add it directly

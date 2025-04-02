@@ -8,10 +8,11 @@ public class GroceryItem {
     private String name;
     private double quantity;
     private String unit;
-    private String category;
     private double price;
-    private boolean isPurchased;
-    private boolean isSelectedForSms; // Remove transient to persist the field
+    private String category;
+    private boolean purchased;
+    private boolean selectedForSms;
+    private String recipeName;
 
     public GroceryItem() {
         // Required empty constructor for Firestore
@@ -24,8 +25,8 @@ public class GroceryItem {
         this.unit = unit;
         this.category = category;
         this.price = price;
-        this.isPurchased = false;
-        this.isSelectedForSms = false;
+        this.purchased = false;
+        this.selectedForSms = false;
     }
 
     // Getters and Setters
@@ -61,14 +62,6 @@ public class GroceryItem {
         this.unit = unit;
     }
 
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
     public double getPrice() {
         return price;
     }
@@ -77,32 +70,50 @@ public class GroceryItem {
         this.price = price;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
     public boolean isPurchased() {
-        return isPurchased;
+        return purchased;
     }
 
     public void setPurchased(boolean purchased) {
-        isPurchased = purchased;
+        this.purchased = purchased;
     }
 
     public boolean isSelectedForSms() {
-        return isSelectedForSms;
+        return selectedForSms;
     }
 
     public void setSelectedForSms(boolean selectedForSms) {
-        isSelectedForSms = selectedForSms;
+        this.selectedForSms = selectedForSms;
+    }
+
+    public String getRecipeName() {
+        return recipeName;
+    }
+
+    public void setRecipeName(String recipeName) {
+        this.recipeName = recipeName;
     }
 
     // Convert to Firestore Map
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
+        map.put("id", id);
         map.put("name", name);
         map.put("quantity", quantity);
         map.put("unit", unit);
-        map.put("category", category);
         map.put("price", price);
-        map.put("isPurchased", isPurchased);
-        map.put("isSelectedForSms", isSelectedForSms);
+        map.put("category", category);
+        map.put("purchased", purchased);
+        map.put("selectedForSms", selectedForSms);
+        map.put("recipeName", recipeName);
         return map;
     }
 }

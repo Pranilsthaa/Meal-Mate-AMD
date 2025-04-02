@@ -37,20 +37,18 @@
     </LinearLayout>
 
     <!-- Search Bar -->
-    <EditText
-        android:id="@+id/searchInput"
+    <SearchView
+        android:id="@+id/searchView"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginHorizontal="16dp"
-        android:background="@drawable/input_background"
-        android:drawableStart="@drawable/ic_search"
-        android:drawablePadding="12dp"
-        android:drawableTint="@color/gray"
-        android:hint="Search items..."
-        android:paddingHorizontal="16dp"
-        android:textColor="@color/white"
-        android:textColorHint="@color/gray"
-        app:layout_constraintTop_toBottomOf="@id/titleBar"/>
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/search_background"
+        android:iconifiedByDefault="false"
+        android:queryHint="Search ingredients..."
+        android:elevation="2dp"
+        app:layout_constraintTop_toBottomOf="@id/titleBar" />
 
     <!-- Shopping Progress Section -->
     <TextView
@@ -62,7 +60,7 @@
         android:textSize="16sp"
         android:layout_margin="16dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/searchInput"/>
+        app:layout_constraintTop_toBottomOf="@id/searchView"/>
 
     <TextView
         android:id="@+id/progressText"
@@ -73,7 +71,7 @@
         android:textSize="16sp"
         android:layout_margin="16dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/searchInput"/>
+        app:layout_constraintTop_toBottomOf="@id/searchView"/>
 
     <ProgressBar
         android:id="@+id/progressBar"

@@ -46,11 +46,18 @@ import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import com.example.meal_app.utils.ToastUtil;
 import android.util.Log;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.widget.SearchView;
+import android.widget.Toast;
 
-public class GroceryFragment extends Fragment implements GroceryAdapter.OnGroceryItemListener {
+public class GroceryFragment extends Fragment implements GroceryAdapter.OnGroceryItemListener, SensorEventListener {
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private String userId;
     private GroceryAdapter adapter;
     private List<Object> allItems = new ArrayList<>();
     private List<Object> filteredItems = new ArrayList<>();
@@ -71,20 +78,45 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     private long lastSelectionClickTime = 0;
     private static final long CLICK_DELAY = 500; // 500ms delay between clicks
 
+    // Shake detection
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private static final float SHAKE_THRESHOLD = 12.0f;
+    private static final int MIN_TIME_BETWEEN_SHAKES = 1000;
+    private long lastShakeTime;
+    private float lastX = 0;
+    private float lastY = 0;
+    private float lastZ = 0;
+
+    private SearchView searchView;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() != null) {
+            userId = auth.getCurrentUser().getUid();
+        }
+        
+        // Initialize sensor manager
+        sensorManager = (SensorManager) requireActivity().getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_grocery, container, false);
 
         try {
-            db = FirebaseFirestore.getInstance();
-            auth = FirebaseAuth.getInstance();
-
             // Initialize views first
             progressText = root.findViewById(R.id.progressText);
             progressBar = root.findViewById(R.id.progressBar);
             totalPriceText = root.findViewById(R.id.totalPrice);
             remainingPriceText = root.findViewById(R.id.remainingPrice);
-            EditText searchInput = root.findViewById(R.id.searchInput);
+            searchView = root.findViewById(R.id.searchView);
             RecyclerView recyclerView = root.findViewById(R.id.groceryRecyclerView);
             shareButton = root.findViewById(R.id.shareButton);
 
@@ -97,18 +129,17 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             shareButton.setOnClickListener(v -> showShareDialog());
 
             // Setup search functionality
-            searchInput.addTextChangedListener(new TextWatcher() {
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                public boolean onQueryTextSubmit(String query) {
+                    filterItems(query);
+                    return true;
                 }
 
                 @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    filterItems(s.toString());
-                }
-
-                @Override
-                public void afterTextChanged(Editable s) {
+                public boolean onQueryTextChange(String newText) {
+                    filterItems(newText);
+                    return true;
                 }
             });
 
@@ -125,13 +156,13 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                         })
                         .addOnFailureListener(e -> {
                             if (getView() != null) {
-                                ToastUtil.showErrorToast(requireContext(), "Error loading user data: " + e.getMessage());
+                                showError("Error loading user data: " + e.getMessage());
                             }
                         });
             } else {
                 // User is not logged in, show message
                 if (getView() != null) {
-                    ToastUtil.showErrorToast(requireContext(), "Please log in to view your grocery list");
+                    showError("Please log in to view your grocery list");
                 }
                 return root;
             }
@@ -141,7 +172,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
         } catch (Exception e) {
             if (getView() != null) {
-                ToastUtil.showErrorToast(requireContext(), "Error initializing grocery list: " + e.getMessage());
+                showError("Error initializing grocery list: " + e.getMessage());
             }
             e.printStackTrace();
         }
@@ -149,8 +180,55 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         return root;
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            long currentTime = System.currentTimeMillis();
+            if ((currentTime - lastShakeTime) > MIN_TIME_BETWEEN_SHAKES) {
+                float x = event.values[0];
+                float y = event.values[1];
+                float z = event.values[2];
+
+                float deltaX = Math.abs(lastX - x);
+                float deltaY = Math.abs(lastY - y);
+                float deltaZ = Math.abs(lastZ - z);
+
+                if ((deltaX > SHAKE_THRESHOLD && deltaY > SHAKE_THRESHOLD) ||
+                    (deltaX > SHAKE_THRESHOLD && deltaZ > SHAKE_THRESHOLD) ||
+                    (deltaY > SHAKE_THRESHOLD && deltaZ > SHAKE_THRESHOLD)) {
+                    lastShakeTime = currentTime;
+                    deleteCheckedItems();
+                }
+
+                lastX = x;
+                lastY = y;
+                lastZ = z;
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Not needed
+    }
+
     private void loadGroceryItems() {
-            String userId = auth.getCurrentUser().getUid();
         Log.d("GroceryFragment", "Loading grocery items for userId: " + userId);
 
         db.collection("groceryLists").document(userId).get()
@@ -749,5 +827,47 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         double progress = totalCount > 0 ? (purchasedCount * 100.0 / totalCount) : 0;
         progressBar.setProgress((int) progress);
         progressText.setText(String.format("%d/%d items", purchasedCount, totalCount));
+    }
+
+    private void deleteCheckedItems() {
+        List<GroceryItem> checkedItems = new ArrayList<>();
+        for (Object item : allItems) {
+            if (item instanceof GroceryItem && ((GroceryItem) item).isPurchased()) {
+                checkedItems.add((GroceryItem) item);
+            }
+        }
+
+        if (checkedItems.isEmpty()) {
+            // Show toast at the top of the screen
+            Toast.makeText(requireContext(), "No purchased items to delete", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Delete checked items from Firestore
+        for (GroceryItem item : checkedItems) {
+            String ingredientId = item.getId();
+            
+            db.collection("groceryLists").document(userId)
+                .update(ingredientId, null)
+                .addOnSuccessListener(aVoid -> {
+                    // Remove item from lists
+                    allItems.remove(item);
+                    filteredItems.remove(item);
+                    adapter.notifyDataSetChanged();
+                    updateTotals();
+                    updateProgress();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(requireContext(), "Error deleting item: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+        }
+
+        Toast.makeText(requireContext(), "Deleting purchased items...", Toast.LENGTH_SHORT).show();
+    }
+
+    private void showError(String message) {
+        if (getContext() != null) {
+            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+        }
     }
 }

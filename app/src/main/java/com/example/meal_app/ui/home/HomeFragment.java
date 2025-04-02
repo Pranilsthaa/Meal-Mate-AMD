@@ -42,6 +42,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.util.HashSet;
+import java.util.Set;
 
 public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClickListener {
 
@@ -243,6 +245,12 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     }
 
     private void setupTodayMealPlan() {
+        // Check if fragment is attached and binding is valid
+        if (!isAdded() || binding == null) {
+            Log.e("HomeFragment", "Cannot setup meal plan - fragment not attached or binding is null");
+            return;
+        }
+
         // Get today's day name
         Calendar calendar = Calendar.getInstance();
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
@@ -259,32 +267,51 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                 .whereEqualTo("day", today)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    // Check if binding is still valid
+                    if (binding == null || !isAdded()) {
+                        Log.e("HomeFragment", "Cannot process meal plans - binding is null or fragment is not attached");
+                        return;
+                    }
+
                     Log.d("HomeFragment", "Found " + queryDocumentSnapshots.size() + " meal plans");
                     if (!queryDocumentSnapshots.isEmpty()) {
-                        DocumentSnapshot mealPlan = queryDocumentSnapshots.getDocuments().get(0);
-                        List<String> recipeIds = (List<String>) mealPlan.get("recipeIds");
-                        Log.d("HomeFragment", "Found " + (recipeIds != null ? recipeIds.size() : 0) + " recipe IDs");
+                        // Create a set to avoid duplicate recipe IDs
+                        Set<String> uniqueRecipeIds = new HashSet<>();
                         
-                        if (recipeIds != null && !recipeIds.isEmpty()) {
-                            loadTodayRecipes(recipeIds);
+                        // Collect recipe IDs from all meal plans for today
+                        for (DocumentSnapshot mealPlan : queryDocumentSnapshots.getDocuments()) {
+                            List<String> recipeIds = (List<String>) mealPlan.get("recipeIds");
+                            if (recipeIds != null) {
+                                uniqueRecipeIds.addAll(recipeIds);
+                            }
+                        }
+                        
+                        Log.d("HomeFragment", "Found " + uniqueRecipeIds.size() + " unique recipe IDs");
+                        
+                        if (!uniqueRecipeIds.isEmpty()) {
+                            loadTodayRecipes(new ArrayList<>(uniqueRecipeIds));
                         } else {
-                            Log.d("HomeFragment", "No recipe IDs found in meal plan");
                             showEmptyMealPlan();
                         }
                     } else {
-                        Log.d("HomeFragment", "No meal plan found for today");
                         showEmptyMealPlan();
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.e("HomeFragment", "Error loading meal plan", e);
-                    if (getView() != null) {
+                    if (isAdded() && getView() != null) {
                         Snackbar.make(getView(), "Error loading meal plan: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     }
                 });
     }
 
     private void showEmptyMealPlan() {
+        // Check if binding is null or fragment is not attached
+        if (binding == null || !isAdded()) {
+            Log.e("HomeFragment", "Cannot show empty meal plan - binding is null or fragment is not attached");
+            return;
+        }
+
         // Hide all meal sections
         binding.breakfastSection.setVisibility(View.GONE);
         binding.lunchSection.setVisibility(View.GONE);
@@ -296,6 +323,12 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
     }
 
     private void loadTodayRecipes(List<String> recipeIds) {
+        // Check if binding is null or fragment is not attached
+        if (binding == null || !isAdded()) {
+            Log.e("HomeFragment", "Cannot load recipes - binding is null or fragment is not attached");
+            return;
+        }
+
         List<Recipe> breakfastRecipes = new ArrayList<>();
         List<Recipe> lunchRecipes = new ArrayList<>();
         List<Recipe> dinnerRecipes = new ArrayList<>();
@@ -310,6 +343,12 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
             Log.d("HomeFragment", "Loading recipe with ID: " + recipeId);
             db.collection("recipes").document(recipeId).get()
                     .addOnSuccessListener(documentSnapshot -> {
+                        // Check if binding is still valid
+                        if (binding == null || !isAdded()) {
+                            Log.e("HomeFragment", "Cannot process recipe - binding is null or fragment is not attached");
+                            return;
+                        }
+
                         if (documentSnapshot.exists()) {
                             try {
                                 Recipe recipe = new Recipe();
@@ -385,33 +424,36 @@ public class HomeFragment extends Fragment implements RecipeAdapter.OnRecipeClic
                                 } else if (category.contains("dinner")) {
                                     dinnerRecipes.add(recipe);
                                 }
+
+                                int currentCount = loadedCount.incrementAndGet();
+                                Log.d("HomeFragment", "Loaded " + currentCount + " of " + recipeIds.size() + " recipes");
+                                
+                                if (currentCount == recipeIds.size()) {
+                                    // Final null check before updating UI
+                                    if (binding != null && isAdded()) {
+                                        Log.d("HomeFragment", "All recipes loaded. Breakfast: " + breakfastRecipes.size() + 
+                                                ", Lunch: " + lunchRecipes.size() + 
+                                                ", Dinner: " + dinnerRecipes.size());
+                                        
+                                        // All recipes loaded, setup adapters for each section
+                                        setupMealSection(binding.breakfastSection, "Breakfast", breakfastRecipes);
+                                        setupMealSection(binding.lunchSection, "Lunch", lunchRecipes);
+                                        setupMealSection(binding.dinnerSection, "Dinner", dinnerRecipes);
+
+                                        // Show/hide sections based on content
+                                        binding.breakfastSection.setVisibility(breakfastRecipes.isEmpty() ? View.GONE : View.VISIBLE);
+                                        binding.lunchSection.setVisibility(lunchRecipes.isEmpty() ? View.GONE : View.VISIBLE);
+                                        binding.dinnerSection.setVisibility(dinnerRecipes.isEmpty() ? View.GONE : View.VISIBLE);
+                                    }
+                                }
                             } catch (Exception e) {
                                 Log.e("HomeFragment", "Error loading recipe: " + recipeId, e);
-                                if (getView() != null) {
+                                if (isAdded() && getView() != null) {
                                     Snackbar.make(getView(), "Error loading recipe: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                                 }
                             }
                         } else {
                             Log.d("HomeFragment", "Recipe document does not exist: " + recipeId);
-                        }
-                        
-                        int currentCount = loadedCount.incrementAndGet();
-                        Log.d("HomeFragment", "Loaded " + currentCount + " of " + recipeIds.size() + " recipes");
-                        
-                        if (currentCount == recipeIds.size()) {
-                            Log.d("HomeFragment", "All recipes loaded. Breakfast: " + breakfastRecipes.size() + 
-                                    ", Lunch: " + lunchRecipes.size() + 
-                                    ", Dinner: " + dinnerRecipes.size());
-                            
-                            // All recipes loaded, setup adapters for each section
-                            setupMealSection(binding.breakfastSection, "Breakfast", breakfastRecipes);
-                            setupMealSection(binding.lunchSection, "Lunch", lunchRecipes);
-                            setupMealSection(binding.dinnerSection, "Dinner", dinnerRecipes);
-
-                            // Show/hide sections based on content
-                            binding.breakfastSection.setVisibility(breakfastRecipes.isEmpty() ? View.GONE : View.VISIBLE);
-                            binding.lunchSection.setVisibility(lunchRecipes.isEmpty() ? View.GONE : View.VISIBLE);
-                            binding.dinnerSection.setVisibility(dinnerRecipes.isEmpty() ? View.GONE : View.VISIBLE);
                         }
                     });
         }

@@ -104,7 +104,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         if (auth.getCurrentUser() != null) {
             userId = auth.getCurrentUser().getUid();
         }
-        
+
         // Initialize sensor manager
         sensorManager = (SensorManager) requireActivity().getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -231,9 +231,9 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                 float deltaY = Math.abs(lastY - y);
                 float deltaZ = Math.abs(lastZ - z);
 
-                if ((deltaX > SHAKE_THRESHOLD && deltaY > SHAKE_THRESHOLD) ||
-                    (deltaX > SHAKE_THRESHOLD && deltaZ > SHAKE_THRESHOLD) ||
-                    (deltaY > SHAKE_THRESHOLD && deltaZ > SHAKE_THRESHOLD)) {
+                if ((deltaX > SHAKE_THRESHOLD && deltaY > SHAKE_THRESHOLD)
+                        || (deltaX > SHAKE_THRESHOLD && deltaZ > SHAKE_THRESHOLD)
+                        || (deltaY > SHAKE_THRESHOLD && deltaZ > SHAKE_THRESHOLD)) {
                     lastShakeTime = currentTime;
                     deleteCheckedItems();
                 }
@@ -258,7 +258,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                     if (documentSnapshot.exists()) {
                         Map<String, Object> groceryList = documentSnapshot.getData();
                         Log.d("GroceryFragment", "Grocery list data: " + groceryList);
-                        
+
                         if (groceryList != null && !groceryList.isEmpty()) {
                             List<GroceryItem> ingredients = new ArrayList<>();
                             for (Map.Entry<String, Object> entry : groceryList.entrySet()) {
@@ -268,21 +268,21 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                                         Log.d("GroceryFragment", "Skipping null value for key: " + entry.getKey());
                                         continue;
                                     }
-                                    
+
                                     Map<String, Object> ingredientData = (Map<String, Object>) value;
                                     Log.d("GroceryFragment", "Processing item: " + entry.getKey());
                                     Log.d("GroceryFragment", "Item data: " + ingredientData);
-                                    
+
                                     // Skip if required fields are missing
                                     if (!ingredientData.containsKey("name")) {
                                         Log.e("GroceryFragment", "Missing name for item: " + entry.getKey());
-                                continue;
-                            }
+                                        continue;
+                                    }
 
                                     GroceryItem ingredient = new GroceryItem();
                                     ingredient.setId(entry.getKey());
                                     ingredient.setName((String) ingredientData.get("name"));
-                                    
+
                                     // Handle numeric values with null checks
                                     Object quantityObj = ingredientData.get("quantity");
                                     if (quantityObj instanceof Number) {
@@ -290,36 +290,36 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                                     } else {
                                         ingredient.setQuantity(1.0); // Default value
                                     }
-                                    
+
                                     Object priceObj = ingredientData.get("price");
                                     if (priceObj instanceof Number) {
                                         ingredient.setPrice(((Number) priceObj).doubleValue());
                                     } else {
                                         ingredient.setPrice(0.0); // Default value
                                     }
-                                    
+
                                     // Handle unit with null check
                                     Object unitObj = ingredientData.get("unit");
                                     ingredient.setUnit(unitObj != null ? (String) unitObj : "");
-                                    
+
                                     // Handle category with null check
                                     Object categoryObj = ingredientData.get("category");
                                     ingredient.setCategory(categoryObj != null ? (String) categoryObj : "Other");
-                                    
+
                                     // Handle boolean values with null checks
                                     Object boughtObj = ingredientData.get("bought");
                                     ingredient.setPurchased(boughtObj instanceof Boolean ? (Boolean) boughtObj : false);
-                                    
+
                                     Object selectedForSmsObj = ingredientData.get("selectedForSms");
                                     ingredient.setSelectedForSms(selectedForSmsObj instanceof Boolean ? (Boolean) selectedForSmsObj : false);
-                                    
+
                                     Log.d("GroceryFragment", "Created ingredient object: " + ingredient);
                                     ingredients.add(ingredient);
                                 } catch (Exception e) {
                                     Log.e("GroceryFragment", "Error processing ingredient: " + entry.getKey(), e);
                                 }
                             }
-                            
+
                             Log.d("GroceryFragment", "Total ingredients loaded: " + ingredients.size());
                             if (!ingredients.isEmpty()) {
                                 updateGroceryList(ingredients);
@@ -345,7 +345,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
     private void updateGroceryList(List<GroceryItem> ingredients) {
         Log.d("GroceryFragment", "Updating grocery list with " + ingredients.size() + " ingredients");
-        
+
         // Group ingredients by category
         Map<String, List<GroceryItem>> categorizedIngredients = new HashMap<>();
         for (GroceryItem ingredient : ingredients) {
@@ -357,7 +357,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             ingredient.setCategory(category); // Set the category in the item
             categorizedIngredients.get(category).add(ingredient);
         }
-        
+
         Log.d("GroceryFragment", "Categories found: " + categorizedIngredients.keySet());
 
         // Sort categories and create final list
@@ -395,12 +395,12 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
             // Update totals and progress
             updateTotals();
             updateProgress();
-            
+
             // Show/hide views based on whether we have items
             if (isAdded() && getView() != null) {
                 View recyclerView = getView().findViewById(R.id.groceryRecyclerView);
                 View emptyStateLayout = getView().findViewById(R.id.emptyStateLayout);
-                
+
                 if (recyclerView != null && emptyStateLayout != null) {
                     if (items.isEmpty()) {
                         recyclerView.setVisibility(View.GONE);
@@ -416,58 +416,58 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
     private String determineIngredientCategory(String ingredient) {
         ingredient = ingredient.toLowerCase();
-        
+
         // Meat & Fish
-        if (ingredient.contains("meat") || ingredient.contains("chicken") || 
-            ingredient.contains("beef") || ingredient.contains("pork") || 
-            ingredient.contains("fish") || ingredient.contains("lamb") ||
-            ingredient.contains("shrimp") || ingredient.contains("seafood")) {
+        if (ingredient.contains("meat") || ingredient.contains("chicken")
+                || ingredient.contains("beef") || ingredient.contains("pork")
+                || ingredient.contains("fish") || ingredient.contains("lamb")
+                || ingredient.contains("shrimp") || ingredient.contains("seafood")) {
             return "Meat & Fish";
         }
-        
+
         // Dairy
-        if (ingredient.contains("milk") || ingredient.contains("cheese") || 
-            ingredient.contains("yogurt") || ingredient.contains("cream") ||
-            ingredient.contains("butter") || ingredient.contains("curd") ||
-            ingredient.contains("paneer")) {
+        if (ingredient.contains("milk") || ingredient.contains("cheese")
+                || ingredient.contains("yogurt") || ingredient.contains("cream")
+                || ingredient.contains("butter") || ingredient.contains("curd")
+                || ingredient.contains("paneer")) {
             return "Dairy";
         }
-        
+
         // Fruits
-        if (ingredient.contains("apple") || ingredient.contains("banana") || 
-            ingredient.contains("orange") || ingredient.contains("berry") ||
-            ingredient.contains("fruit") || ingredient.contains("mango") ||
-            ingredient.contains("grape") || ingredient.contains("melon")) {
+        if (ingredient.contains("apple") || ingredient.contains("banana")
+                || ingredient.contains("orange") || ingredient.contains("berry")
+                || ingredient.contains("fruit") || ingredient.contains("mango")
+                || ingredient.contains("grape") || ingredient.contains("melon")) {
             return "Fruits";
         }
-        
+
         // Vegetables
-        if (ingredient.contains("carrot") || ingredient.contains("potato") || 
-            ingredient.contains("onion") || ingredient.contains("tomato") ||
-            ingredient.contains("vegetable") || ingredient.contains("garlic") ||
-            ingredient.contains("ginger") || ingredient.contains("pepper") ||
-            ingredient.contains("lettuce") || ingredient.contains("spinach") ||
-            ingredient.contains("cucumber")) {
+        if (ingredient.contains("carrot") || ingredient.contains("potato")
+                || ingredient.contains("onion") || ingredient.contains("tomato")
+                || ingredient.contains("vegetable") || ingredient.contains("garlic")
+                || ingredient.contains("ginger") || ingredient.contains("pepper")
+                || ingredient.contains("lettuce") || ingredient.contains("spinach")
+                || ingredient.contains("cucumber")) {
             return "Vegetables";
         }
-        
+
         // Grains & Pasta
-        if (ingredient.contains("rice") || ingredient.contains("pasta") || 
-            ingredient.contains("flour") || ingredient.contains("bread") ||
-            ingredient.contains("cereal") || ingredient.contains("noodle") ||
-            ingredient.contains("wheat") || ingredient.contains("grain")) {
+        if (ingredient.contains("rice") || ingredient.contains("pasta")
+                || ingredient.contains("flour") || ingredient.contains("bread")
+                || ingredient.contains("cereal") || ingredient.contains("noodle")
+                || ingredient.contains("wheat") || ingredient.contains("grain")) {
             return "Grains & Pasta";
         }
-        
+
         // Condiments & Spices
-        if (ingredient.contains("oil") || ingredient.contains("sauce") || 
-            ingredient.contains("vinegar") || ingredient.contains("spice") ||
-            ingredient.contains("herb") || ingredient.contains("salt") ||
-            ingredient.contains("sugar") || ingredient.contains("masala") ||
-            ingredient.contains("powder") || ingredient.contains("seasoning")) {
+        if (ingredient.contains("oil") || ingredient.contains("sauce")
+                || ingredient.contains("vinegar") || ingredient.contains("spice")
+                || ingredient.contains("herb") || ingredient.contains("salt")
+                || ingredient.contains("sugar") || ingredient.contains("masala")
+                || ingredient.contains("powder") || ingredient.contains("seasoning")) {
             return "Condiments & Spices";
         }
-        
+
         return "Other";
     }
 
@@ -476,7 +476,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         if (isAdded() && getView() != null) {
             View recyclerView = getView().findViewById(R.id.groceryRecyclerView);
             View emptyStateLayout = getView().findViewById(R.id.emptyStateLayout);
-            
+
             if (recyclerView != null && emptyStateLayout != null) {
                 recyclerView.setVisibility(View.GONE);
                 emptyStateLayout.setVisibility(View.VISIBLE);
@@ -495,10 +495,10 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         } else {
             filteredItems.clear();
             String lowerQuery = query.toLowerCase();
-            
+
             // Keep track of the current section
             String currentSection = null;
-            
+
             // Iterate through all items
             for (Object item : allItems) {
                 if (item instanceof String) {
@@ -521,7 +521,9 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void updateTotals() {
-        if (getView() == null) return;
+        if (getView() == null) {
+            return;
+        }
 
         double total = 0;
         double remaining = 0;
@@ -578,24 +580,24 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
         // Create a map with all the item's data
         Map<String, Object> itemData = item.toMap();
-        
+
         // Update in Firestore using update with the item's ID
         userGroceryRef.update(item.getId(), itemData)
-            .addOnSuccessListener(aVoid -> {
-                adapter.updateItem(item);
-                // Show/hide share button based on selection
-                updateShareButtonVisibility();
-                ToastUtil.showSuccessToast(requireContext(), 
-                    isSelected ? "Item selected for sharing" : "Item unselected for sharing");
-            })
-            .addOnFailureListener(e -> {
-                // Revert the change if update fails
-                item.setSelectedForSms(!isSelected);
-                adapter.updateItem(item);
-                if (getView() != null) {
-                    ToastUtil.showErrorToast(requireContext(), "Error updating selection: " + e.getMessage());
-                }
-            });
+                .addOnSuccessListener(aVoid -> {
+                    adapter.updateItem(item);
+                    // Show/hide share button based on selection
+                    updateShareButtonVisibility();
+                    ToastUtil.showSuccessToast(requireContext(),
+                            isSelected ? "Item selected for sharing" : "Item unselected for sharing");
+                })
+                .addOnFailureListener(e -> {
+                    // Revert the change if update fails
+                    item.setSelectedForSms(!isSelected);
+                    adapter.updateItem(item);
+                    if (getView() != null) {
+                        ToastUtil.showErrorToast(requireContext(), "Error updating selection: " + e.getMessage());
+                    }
+                });
     }
 
     @Override
@@ -618,21 +620,21 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
         // Create a map with all the item's data
         Map<String, Object> itemData = item.toMap();
-        
+
         // Update in Firestore using update with the item's ID
         userGroceryRef.update(item.getId(), itemData)
-            .addOnSuccessListener(aVoid -> {
-                adapter.updateItem(item);
-                updateTotals();
-                ToastUtil.showSuccessToast(requireContext(), 
-                    newPurchasedState ? "Item marked as purchased" : "Item marked as unpurchased");
-            })
-            .addOnFailureListener(e -> {
-                // Revert the change if update fails
-                item.setPurchased(!newPurchasedState);
-                adapter.updateItem(item);
-                ToastUtil.showErrorToast(requireContext(), "Error updating item: " + e.getMessage());
-            });
+                .addOnSuccessListener(aVoid -> {
+                    adapter.updateItem(item);
+                    updateTotals();
+                    ToastUtil.showSuccessToast(requireContext(),
+                            newPurchasedState ? "Item marked as purchased" : "Item marked as unpurchased");
+                })
+                .addOnFailureListener(e -> {
+                    // Revert the change if update fails
+                    item.setPurchased(!newPurchasedState);
+                    adapter.updateItem(item);
+                    ToastUtil.showErrorToast(requireContext(), "Error updating item: " + e.getMessage());
+                });
     }
 
     private void showShareDialog() {
@@ -708,14 +710,14 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         // Store the data for later use after permission is granted
         this.pendingPhoneNumber = phoneNumber;
         this.pendingItems = new ArrayList<>(items);
-        
+
         if (ContextCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             // Show explanation if needed
             if (shouldShowRequestPermissionRationale(Manifest.permission.SEND_SMS)) {
-                ToastUtil.showErrorToast(requireContext(), 
-                    "SMS permission is needed to share your grocery list");
-                
+                ToastUtil.showErrorToast(requireContext(),
+                        "SMS permission is needed to share your grocery list");
+
                 // Request permission after showing explanation
                 ActivityCompat.requestPermissions(requireActivity(),
                         new String[]{Manifest.permission.SEND_SMS},
@@ -766,7 +768,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
 
             SmsManager smsManager = SmsManager.getDefault();
             ArrayList<String> parts = smsManager.divideMessage(message.toString());
-            
+
             // Send SMS parts
             for (String part : parts) {
                 smsManager.sendTextMessage(formattedNumber, null, part, null, null);
@@ -776,8 +778,8 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                 ToastUtil.showSuccessToast(requireContext(), "Grocery list shared successfully");
             }
         } catch (IllegalArgumentException e) {
-            ToastUtil.showErrorToast(requireContext(), 
-                "Invalid phone number format. Please enter a valid 10-digit number.");
+            ToastUtil.showErrorToast(requireContext(),
+                    "Invalid phone number format. Please enter a valid 10-digit number.");
         } catch (Exception e) {
             ToastUtil.showErrorToast(requireContext(), "Failed to send SMS: " + e.getMessage());
             e.printStackTrace();
@@ -794,12 +796,12 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                     pendingPhoneNumber = null;
                     pendingItems = null;
                 } else {
-                    ToastUtil.showErrorToast(requireContext(), 
-                        "Permission granted. Please try sharing again.");
+                    ToastUtil.showErrorToast(requireContext(),
+                            "Permission granted. Please try sharing again.");
                 }
             } else {
-                ToastUtil.showErrorToast(requireContext(), 
-                    "SMS permission denied. Cannot share grocery list.");
+                ToastUtil.showErrorToast(requireContext(),
+                        "SMS permission denied. Cannot share grocery list.");
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -807,7 +809,9 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void updateTotalPrice() {
-        if (getView() == null) return;
+        if (getView() == null) {
+            return;
+        }
 
         double total = 0;
         double remaining = 0;
@@ -830,7 +834,9 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
     }
 
     private void updateProgress() {
-        if (getView() == null) return;
+        if (getView() == null) {
+            return;
+        }
 
         int purchasedCount = 0;
         int totalCount = 0;
@@ -868,20 +874,20 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
         // Delete checked items from Firestore
         for (GroceryItem item : checkedItems) {
             String ingredientId = item.getId();
-            
+
             db.collection("groceryLists").document(userId)
-                .update(ingredientId, null)
-                .addOnSuccessListener(aVoid -> {
-                    // Remove item from lists
-                    allItems.remove(item);
-                    filteredItems.remove(item);
-                    adapter.notifyDataSetChanged();
-                    updateTotals();
-                    updateProgress();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(requireContext(), "Error deleting item: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                    .update(ingredientId, null)
+                    .addOnSuccessListener(aVoid -> {
+                        // Remove item from lists
+                        allItems.remove(item);
+                        filteredItems.remove(item);
+                        adapter.notifyDataSetChanged();
+                        updateTotals();
+                        updateProgress();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(requireContext(), "Error deleting item: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
         }
 
         Toast.makeText(requireContext(), "Deleting purchased items...", Toast.LENGTH_SHORT).show();
@@ -913,7 +919,7 @@ public class GroceryFragment extends Fragment implements GroceryAdapter.OnGrocer
                         .append(", quantity: ")
                         .append(groceryItem.getQuantity())
                         .append(". ");
-                
+
                 if (groceryItem.isPurchased()) {
                     textToRead.append("Already purchased. ");
                 }

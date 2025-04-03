@@ -78,7 +78,7 @@ public class RecipesFragment extends Fragment {
 
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder,
-                                @NonNull RecyclerView.ViewHolder target) {
+                    @NonNull RecyclerView.ViewHolder target) {
                 return false;
             }
 
@@ -102,8 +102,8 @@ public class RecipesFragment extends Fragment {
 
             @Override
             public void onChildDraw(@NonNull android.graphics.Canvas c, @NonNull RecyclerView recyclerView,
-                                  @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY,
-                                  int actionState, boolean isCurrentlyActive) {
+                    @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY,
+                    int actionState, boolean isCurrentlyActive) {
 
                 View itemView = viewHolder.itemView;
                 int iconMargin = (itemView.getHeight() - iconDelete.getIntrinsicHeight()) / 2;
@@ -155,15 +155,15 @@ public class RecipesFragment extends Fragment {
     }
 
     private void setupAddRecipeButton() {
-        binding.addRecipeFab.setOnClickListener(v -> 
-            Navigation.findNavController(requireView())
-                    .navigate(R.id.action_navigation_recipes_to_addRecipeFragment));
+        binding.addRecipeFab.setOnClickListener(v
+                -> Navigation.findNavController(requireView())
+                        .navigate(R.id.action_navigation_recipes_to_addRecipeFragment));
     }
 
     private void loadRecipes() {
         String userId = auth.getCurrentUser().getUid();
         String userName = auth.getCurrentUser().getDisplayName();
-        
+
         // Update the title with user's name
         if (binding.recipesTitle != null) {
             String title = "Recipes";
@@ -188,12 +188,12 @@ public class RecipesFragment extends Fragment {
                         recipe.setDescription(document.getString("description"));
                         recipe.setImageUrl(document.getString("imageUrl"));
                         recipe.setCategory(document.getString("category"));
-                        recipe.setCookTime(document.getLong("cookTime") != null ? 
-                                document.getLong("cookTime").intValue() : 0);
-                        recipe.setServings(document.getLong("servings") != null ? 
-                                document.getLong("servings").intValue() : 0);
-                        recipe.setTotalPrice(document.getDouble("totalPrice") != null ? 
-                                document.getDouble("totalPrice") : 0.0);
+                        recipe.setCookTime(document.getLong("cookTime") != null
+                                ? document.getLong("cookTime").intValue() : 0);
+                        recipe.setServings(document.getLong("servings") != null
+                                ? document.getLong("servings").intValue() : 0);
+                        recipe.setTotalPrice(document.getDouble("totalPrice") != null
+                                ? document.getDouble("totalPrice") : 0.0);
                         recipe.setUserId(document.getString("userId"));
                         recipe.setFeatured(false);
                         recipes.add(recipe);
@@ -234,22 +234,24 @@ public class RecipesFragment extends Fragment {
             adapter.notifyDataSetChanged();
             return;
         }
-
+        // Retrieve the recipe document from Firestore
         db.collection("recipes").document(recipe.getId()).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
+                        // Extract the ingredients and recipe name from the document
                         Object ingredientsObj = documentSnapshot.get("ingredients");
                         String recipeName = documentSnapshot.getString("name");
                         List<String> ingredientNames = new ArrayList<>();
 
+                        // Process the ingredients list
                         if (ingredientsObj instanceof List<?>) {
                             List<?> ingredientsList = (List<?>) ingredientsObj;
                             for (Object ingredient : ingredientsList) {
                                 if (ingredient instanceof String) {
-                                    // If it's a string, add it directly
+                                    // Add string ingredients directly
                                     ingredientNames.add((String) ingredient);
                                 } else if (ingredient instanceof Map) {
-                                    // If it's a map, get the name field
+                                    // Extract the name field from ingredient maps
                                     @SuppressWarnings("unchecked")
                                     Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
                                     String name = (String) ingredientMap.get("name");
@@ -260,31 +262,38 @@ public class RecipesFragment extends Fragment {
                             }
                         }
 
+                        // If ingredients exist, prepare to delete them from the grocery list
                         if (!ingredientNames.isEmpty() && recipeName != null) {
                             Map<String, Object> updates = new HashMap<>();
                             for (String ingredient : ingredientNames) {
+                                // Generate a unique ID for each ingredient based on the recipe name and ingredient name
                                 String ingredientId = recipeName.toLowerCase().replaceAll("[^a-z0-9]", "_")
                                         + "_" + ingredient.toLowerCase().replaceAll("[^a-z0-9]", "_");
                                 updates.put(ingredientId, FieldValue.delete());
                             }
 
+                            // Update the grocery list document to remove the ingredients
                             db.collection("groceryLists").document(userId)
                                     .update(updates)
-                                    .addOnSuccessListener(aVoid -> deleteRecipeDocument(recipe))
+                                    .addOnSuccessListener(aVoid -> deleteRecipeDocument(recipe)) // Proceed to delete the recipe document
                                     .addOnFailureListener(e -> {
+                                        // Log the error and still proceed to delete the recipe document
                                         System.err.println("Error removing ingredients from grocery list: " + e.getMessage());
                                         deleteRecipeDocument(recipe);
                                     });
                         } else {
+                            // If no ingredients exist, directly delete the recipe document
                             deleteRecipeDocument(recipe);
                         }
                     } else {
+                        // Show an error if the recipe document is not found
                         showError("Recipe document not found for deletion.");
                     }
                 })
                 .addOnFailureListener(e -> showError("Error getting recipe details for deletion: " + e.getMessage()));
     }
 
+    // Deletes the recipe document from Firestore
     private void deleteRecipeDocument(Recipe recipe) {
         db.collection("recipes").document(recipe.getId())
                 .delete()
@@ -294,6 +303,7 @@ public class RecipesFragment extends Fragment {
                 .addOnFailureListener(e -> showError("Error deleting recipe from Firestore: " + e.getMessage()));
     }
 
+    // Deletes the recipe and its ingredients, and removes it from the RecyclerView
     private void deleteRecipeAndIngredients(Recipe recipe, int position) {
         deleteRecipeAndIngredientsFromFirestore(recipe);
         if (position >= 0 && position < recipes.size() && recipes.get(position).getId().equals(recipe.getId())) {
@@ -302,6 +312,7 @@ public class RecipesFragment extends Fragment {
         }
     }
 
+    // Navigates to the edit recipe screen
     private void editRecipe(Recipe recipe) {
         Bundle bundle = new Bundle();
         bundle.putString("recipeId", recipe.getId());
@@ -309,11 +320,13 @@ public class RecipesFragment extends Fragment {
             Navigation.findNavController(requireView())
                     .navigate(R.id.action_navigation_recipes_to_editRecipeFragment, bundle);
         } catch (IllegalStateException | IllegalArgumentException e) {
+            // Handle navigation errors
             showError("Could not navigate to edit recipe.");
             System.err.println("Navigation error: " + e.getMessage());
         }
     }
 
+    // Displays an error message to the user
     private void showError(String message) {
         if (getView() != null) {
             Snackbar.make(getView(), message, Snackbar.LENGTH_LONG).show();
@@ -325,4 +338,4 @@ public class RecipesFragment extends Fragment {
         super.onDestroyView();
         binding = null;
     }
-} 
+}

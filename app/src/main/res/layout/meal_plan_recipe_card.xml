@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView 
+<!-- Main Recipe Card Container -->
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="180dp"
@@ -11,26 +12,27 @@
     app:strokeColor="@color/meal_plan_card_accent"
     app:cardBackgroundColor="@color/meal_plan_card_background">
 
+    <!-- Main Layout Container -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Recipe Image with Scrim -->
+        <!-- Recipe Image - Top portion of the card -->
         <ImageView
             android:id="@+id/recipeImage"
             android:layout_width="match_parent"
             android:layout_height="120dp"
             android:scaleType="centerCrop"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Double gradient scrim for better text visibility -->
+        <!-- Double gradient scrim overlay to improve text readability on images -->
         <View
             android:layout_width="match_parent"
             android:layout_height="120dp"
             android:background="@drawable/double_image_scrim"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Content Container -->
+        <!-- Bottom Content Container - Recipe details section -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -39,6 +41,7 @@
             app:layout_constraintTop_toBottomOf="@id/recipeImage"
             app:layout_constraintBottom_toBottomOf="parent">
 
+            <!-- Recipe Name Text -->
             <TextView
                 android:id="@+id/recipeName"
                 android:layout_width="match_parent"
@@ -48,8 +51,9 @@
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end"
-                app:layout_constraintTop_toTopOf="parent"/>
+                app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- Recipe Info Card - Contains cooking time and servings info -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -59,6 +63,7 @@
                 app:cardElevation="0dp"
                 app:layout_constraintTop_toBottomOf="@id/recipeName">
 
+                <!-- Info Container for Cook Time and Servings -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -67,6 +72,7 @@
                     android:paddingHorizontal="8dp"
                     android:gravity="center_vertical">
 
+                    <!-- Cook Time Section -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -74,27 +80,31 @@
                         android:orientation="horizontal"
                         android:gravity="center">
 
+                        <!-- Cook Time Icon -->
                         <ImageView
                             android:layout_width="16dp"
                             android:layout_height="16dp"
                             android:src="@drawable/ic_time"
-                            app:tint="#E0E0E0"/>
+                            app:tint="#E0E0E0" />
 
+                        <!-- Cook Time Text -->
                         <TextView
                             android:id="@+id/recipeCookTime"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
                             android:textColor="#E0E0E0"
-                            android:textSize="12sp"/>
+                            android:textSize="12sp" />
                     </LinearLayout>
 
+                    <!-- Divider between Cook Time and Servings -->
                     <View
                         android:layout_width="1dp"
                         android:layout_height="16dp"
                         android:layout_marginHorizontal="8dp"
-                        android:background="#4DE0E0E0"/>
+                        android:background="#4DE0E0E0" />
 
+                    <!-- Servings Section -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -102,22 +112,24 @@
                         android:orientation="horizontal"
                         android:gravity="center">
 
+                        <!-- Servings Icon -->
                         <ImageView
                             android:layout_width="16dp"
                             android:layout_height="16dp"
                             android:src="@drawable/ic_servings"
-                            app:tint="#E0E0E0"/>
+                            app:tint="#E0E0E0" />
 
+                        <!-- Servings Text -->
                         <TextView
                             android:id="@+id/recipeServings"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
                             android:textColor="#E0E0E0"
-                            android:textSize="12sp"/>
+                            android:textSize="12sp" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
-</com.google.android.material.card.MaterialCardView> 
+</com.google.android.material.card.MaterialCardView>

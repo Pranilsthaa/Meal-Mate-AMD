@@ -32,28 +32,30 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class RecipeDetailsFragment extends Fragment {
-    private FirebaseFirestore db;
-    private String recipeId;
-    private View root;
+
+    private FirebaseFirestore db; // Firestore database instance
+    private String recipeId; // ID of the recipe to display
+    private View root; // Root view of the fragment
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
         root = inflater.inflate(R.layout.fragment_recipe_details, container, false);
-        db = FirebaseFirestore.getInstance();
+        db = FirebaseFirestore.getInstance(); // Initialize Firestore instance
 
-        // Get recipe ID from arguments
+        // Get recipe ID and navigation arguments
         if (getArguments() != null) {
             recipeId = getArguments().getString("recipeId");
-            // Check if navigating from meals screen
             boolean isFromMeals = getArguments().getBoolean("fromMeals", true);
 
-            // Hide "Add to Meal Plan" button if coming from meals screen
+            // Hide "Add to Meal Plan" button if navigating from meals screen
             Button addToMealPlanButton = root.findViewById(R.id.addToMealPlanButton);
-            
+            if (isFromMeals) {
                 addToMealPlanButton.setVisibility(View.GONE);
+            }
         }
 
-        // Setup back button
+        // Setup back button functionality
         ImageButton backButton = root.findViewById(R.id.backButton);
         backButton.setOnClickListener(v -> {
             if (getActivity() != null) {
@@ -61,6 +63,7 @@ public class RecipeDetailsFragment extends Fragment {
             }
         });
 
+        // Load recipe details if recipe ID is available
         if (recipeId != null) {
             loadRecipeDetails();
         }
@@ -69,10 +72,10 @@ public class RecipeDetailsFragment extends Fragment {
     }
 
     private void loadRecipeDetails() {
-        // Check if this is a featured recipe (IDs starting with "featured_")
+        // Check if the recipe is a featured recipe (IDs starting with "featured_")
         if (recipeId != null && recipeId.startsWith("featured_")) {
-            // Load from featured recipes in assets
             try {
+                // Load featured recipes from assets
                 InputStream is = requireContext().getAssets().open("featured_recipes.json");
                 int size = is.available();
                 byte[] buffer = new byte[size];
@@ -87,22 +90,22 @@ public class RecipeDetailsFragment extends Fragment {
                 for (int i = 0; i < featuredRecipesArray.length(); i++) {
                     JSONObject recipeJson = featuredRecipesArray.getJSONObject(i);
                     if (recipeId.equals(recipeJson.getString("id"))) {
-                        updateUIForFeaturedRecipe(recipeJson);
+                        updateUIForFeaturedRecipe(recipeJson); // Update UI for featured recipe
                         return;
                     }
                 }
-                // If we get here, recipe wasn't found
+                // Handle case where recipe is not found
                 handleError("Featured recipe not found");
             } catch (Exception e) {
                 handleError("Error loading featured recipe: " + e.getMessage());
             }
         } else {
-            // Load from Firestore as usual
+            // Load recipe details from Firestore
             db.collection("recipes").document(recipeId)
                     .get()
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
-                            updateUI(documentSnapshot);
+                            updateUI(documentSnapshot); // Update UI with Firestore data
                         }
                     })
                     .addOnFailureListener(e -> {
@@ -127,7 +130,7 @@ public class RecipeDetailsFragment extends Fragment {
                 recipeImage.setImageResource(R.drawable.placeholder_recipe);
             }
 
-            // Update basic info
+            // Update basic recipe information
             TextView nameText = root.findViewById(R.id.recipeName);
             TextView descriptionText = root.findViewById(R.id.recipeDescription);
             TextView categoryText = root.findViewById(R.id.recipeCategory);
@@ -145,21 +148,21 @@ public class RecipeDetailsFragment extends Fragment {
             double totalPrice = 0.0;
             JSONArray ingredientsArray = recipeJson.getJSONArray("ingredients");
             List<String> displayIngredients = new ArrayList<>();
-            
+
             for (int i = 0; i < ingredientsArray.length(); i++) {
                 JSONObject ingredientJson = ingredientsArray.getJSONObject(i);
                 String name = ingredientJson.getString("name");
                 double quantity = ingredientJson.optDouble("quantity", 1.0);
                 String unit = ingredientJson.optString("unit", "unit");
                 double price = ingredientJson.optDouble("price", 0.0);
-                
+
                 totalPrice += price;
-                
-                String displayString = quantity > 0 ? 
-                    String.format("%.1f %s %s", quantity, unit, name) : name;
+
+                String displayString = quantity > 0
+                        ? String.format("%.1f %s %s", quantity, unit, name) : name;
                 displayIngredients.add(displayString);
             }
-            
+
             totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
 
             // Setup ingredients list
@@ -204,7 +207,7 @@ public class RecipeDetailsFragment extends Fragment {
                 recipeImage.setImageResource(R.drawable.placeholder_recipe);
             }
 
-            // Update basic info with null checks
+            // Update basic recipe information with null checks
             TextView nameText = root.findViewById(R.id.recipeName);
             TextView descriptionText = root.findViewById(R.id.recipeDescription);
             TextView categoryText = root.findViewById(R.id.recipeCategory);
@@ -212,7 +215,6 @@ public class RecipeDetailsFragment extends Fragment {
             TextView servingsText = root.findViewById(R.id.servings);
             TextView totalPriceText = root.findViewById(R.id.totalPrice);
 
-            // Safely set text with null checks
             nameText.setText(document.getString("name") != null ? document.getString("name") : "N/A");
             descriptionText.setText(document.getString("description") != null ? document.getString("description") : "No description available");
             categoryText.setText(document.getString("category") != null ? document.getString("category") : "Uncategorized");
@@ -244,14 +246,14 @@ public class RecipeDetailsFragment extends Fragment {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> ingredientMap = (Map<String, Object>) ingredient;
                         Object priceObj = ingredientMap.get("price");
-                        
+
                         if (priceObj instanceof Number) {
                             totalPrice += ((Number) priceObj).doubleValue();
                         }
                     }
                 }
             }
-            
+
             totalPriceText.setText("NRS " + String.format("%.2f", totalPrice));
 
             // Setup ingredients list with type checking
@@ -271,15 +273,15 @@ public class RecipeDetailsFragment extends Fragment {
                             String name = (String) ingredientMap.get("name");
                             Object quantityObj = ingredientMap.get("quantity");
                             String unit = (String) ingredientMap.get("unit");
-                            
+
                             if (name != null) {
                                 double quantity = 1.0;
                                 if (quantityObj instanceof Number) {
                                     quantity = ((Number) quantityObj).doubleValue();
                                 }
-                                
-                                String displayString = quantity > 0 && unit != null ? 
-                                    String.format("%.1f %s %s", quantity, unit, name) : name;
+
+                                String displayString = quantity > 0 && unit != null
+                                        ? String.format("%.1f %s %s", quantity, unit, name) : name;
                                 displayIngredients.add(displayString);
                             }
                         }
@@ -315,18 +317,20 @@ public class RecipeDetailsFragment extends Fragment {
     }
 
     private void showDaySelectionDialog() {
-        String[] days = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+        // Show a dialog to select a day for meal planning
+        String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Select Day")
                 .setItems(days, (dialog, which) -> {
-                    assignRecipeToDay(days[which]);
+                    assignRecipeToDay(days[which]); // Assign recipe to the selected day
                 })
                 .show();
     }
 
     private void assignRecipeToDay(String day) {
-        if (recipeId == null)
+        if (recipeId == null) {
             return;
+        }
 
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
@@ -380,14 +384,16 @@ public class RecipeDetailsFragment extends Fragment {
     }
 
     private void handleError(String message) {
+        // Display error message using Snackbar and log it
         if (getActivity() != null && root != null) {
             Snackbar.make(root, message, Snackbar.LENGTH_LONG).show();
             Log.e("RecipeDetailsFragment", message);
         }
     }
 
-    // Ingredients Adapter
+    // Adapter for displaying ingredients in a RecyclerView
     private static class IngredientsAdapter extends RecyclerView.Adapter<IngredientsAdapter.ViewHolder> {
+
         private final List<String> ingredients;
 
         public IngredientsAdapter(List<String> ingredients) {
@@ -404,15 +410,16 @@ public class RecipeDetailsFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            holder.bind(ingredients.get(position));
+            holder.bind(ingredients.get(position)); // Bind ingredient data to the view
         }
 
         @Override
         public int getItemCount() {
-            return ingredients.size();
+            return ingredients.size(); // Return the number of ingredients
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
+
             private final TextView textView;
 
             public ViewHolder(@NonNull View itemView) {
@@ -421,13 +428,14 @@ public class RecipeDetailsFragment extends Fragment {
             }
 
             public void bind(String ingredient) {
-                textView.setText(ingredient);
+                textView.setText(ingredient); // Set ingredient text
             }
         }
     }
 
-    // Instructions Adapter
+    // Adapter for displaying instructions in a RecyclerView
     private static class InstructionsAdapter extends RecyclerView.Adapter<InstructionsAdapter.ViewHolder> {
+
         private final List<String> instructions;
 
         public InstructionsAdapter(List<String> instructions) {
@@ -444,15 +452,16 @@ public class RecipeDetailsFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            holder.bind(position + 1, instructions.get(position));
+            holder.bind(position + 1, instructions.get(position)); // Bind instruction data to the view
         }
 
         @Override
         public int getItemCount() {
-            return instructions.size();
+            return instructions.size(); // Return the number of instructions
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
+
             private final TextView stepNumberText;
             private final TextView instructionText;
 
@@ -463,8 +472,8 @@ public class RecipeDetailsFragment extends Fragment {
             }
 
             public void bind(int stepNumber, String instruction) {
-                stepNumberText.setText(String.valueOf(stepNumber));
-                instructionText.setText(instruction);
+                stepNumberText.setText(String.valueOf(stepNumber)); // Set step number
+                instructionText.setText(instruction); // Set instruction text
             }
         }
     }

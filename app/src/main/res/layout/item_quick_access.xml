@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Root card container for quick access items -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="120dp"
     android:layout_height="120dp"
@@ -7,6 +9,7 @@
     app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
+    <!-- Container for icon and text -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -14,12 +17,14 @@
         android:orientation="vertical"
         android:padding="12dp">
 
+        <!-- Icon for the quick access item -->
         <ImageView
             android:id="@+id/itemIcon"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginBottom="8dp" />
 
+        <!-- Text label for the quick access item -->
         <TextView
             android:id="@+id/itemName"
             android:layout_width="wrap_content"
@@ -30,4 +35,4 @@
 
     </LinearLayout>
 
-</com.google.android.material.card.MaterialCardView> 
+</com.google.android.material.card.MaterialCardView>

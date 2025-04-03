@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Main meal card container with material design styling -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -13,20 +14,23 @@
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
 
+    <!-- Horizontal layout to organize meal card content -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="12dp">
 
+        <!-- Recipe thumbnail image -->
         <ImageView
             android:id="@+id/recipeImage"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:scaleType="centerCrop"
             android:background="@drawable/rounded_corners"
-            android:src="@drawable/placeholder_recipe"/>
+            android:src="@drawable/placeholder_recipe" />
 
+        <!-- Container for recipe text information -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -34,28 +38,32 @@
             android:orientation="vertical"
             android:layout_marginStart="12dp">
 
+            <!-- Recipe name/title -->
             <TextView
                 android:id="@+id/recipeName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="@color/white"/>
+                android:textColor="@color/white" />
 
+            <!-- Recipe category label -->
             <TextView
                 android:id="@+id/recipeCategory"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="14sp"
                 android:textColor="@color/gray"
-                android:layout_marginTop="4dp"/>
+                android:layout_marginTop="4dp" />
 
+            <!-- Container for cooking metrics (time and servings) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="8dp">
 
+                <!-- Cooking time indicator with clock icon -->
                 <TextView
                     android:id="@+id/cookingTime"
                     android:layout_width="wrap_content"
@@ -64,8 +72,9 @@
                     android:textColor="@color/orange"
                     android:drawableStart="@drawable/ic_time"
                     android:drawablePadding="4dp"
-                    android:layout_marginEnd="16dp"/>
+                    android:layout_marginEnd="16dp" />
 
+                <!-- Serving size indicator with person icon -->
                 <TextView
                     android:id="@+id/servings"
                     android:layout_width="wrap_content"
@@ -73,10 +82,11 @@
                     android:textSize="12sp"
                     android:textColor="@color/orange"
                     android:drawableStart="@drawable/ic_person"
-                    android:drawablePadding="4dp"/>
+                    android:drawablePadding="4dp" />
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Remove button to delete this meal card -->
         <ImageButton
             android:id="@+id/removeButton"
             android:layout_width="wrap_content"
@@ -84,6 +94,6 @@
             android:src="@drawable/ic_close"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
-            android:tint="@color/gray"/>
+            android:tint="@color/gray" />
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView> 
+</com.google.android.material.card.MaterialCardView>

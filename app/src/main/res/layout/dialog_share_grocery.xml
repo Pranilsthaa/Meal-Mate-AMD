@@ -44,7 +44,8 @@
         android:id="@+id/selectedItemsRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"/>
+        android:layout_marginBottom="24dp"
+        android:layoutAnimation="@anim/layout_animation_fade_in"/>
 
     <!-- Phone Number Input -->
     <LinearLayout

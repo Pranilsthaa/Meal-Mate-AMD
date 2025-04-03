@@ -323,8 +323,8 @@ public class AddRecipeFragment extends Fragment {
             View uploadPrompt = getView().findViewById(R.id.uploadPromptLayout);
             if (imageView != null && uploadPrompt != null) {
                 Glide.with(this)
-                    .load(uri)
-                    .into(imageView);
+                        .load(uri)
+                        .into(imageView);
                 uploadPrompt.setVisibility(View.GONE);
             }
         }
@@ -406,7 +406,7 @@ public class AddRecipeFragment extends Fragment {
 
     protected void addInstructionStep(View root) {
         View stepView = getLayoutInflater().inflate(R.layout.item_instruction_step, null);
-        
+
         // Set step number
         TextView stepNumber = stepView.findViewById(R.id.stepNumberText);
         stepNumber.setText(String.format("%d.", instructionViews.size() + 1));
@@ -451,10 +451,12 @@ public class AddRecipeFragment extends Fragment {
         EditText priceInput = ingredientView.findViewById(R.id.priceInput);
         priceInput.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
 
             @Override
             public void afterTextChanged(Editable s) {
@@ -537,19 +539,19 @@ public class AddRecipeFragment extends Fragment {
     private void saveRecipeToFirestore(Map<String, Object> recipe) {
         // Save the recipe directly
         db.collection("recipes")
-            .add(recipe)
-            .addOnSuccessListener(documentReference -> {
-                if (loadingSnackbar != null) {
-                    loadingSnackbar.dismiss();
-                }
-                Snackbar.make(requireView(), "Recipe saved successfully!", Snackbar.LENGTH_SHORT).show();
-                NavController navController = Navigation.findNavController(requireActivity(),
-                        R.id.nav_host_fragment_activity_main);
-                navController.navigateUp();
-            })
-            .addOnFailureListener(e -> {
-                showError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
-            });
+                .add(recipe)
+                .addOnSuccessListener(documentReference -> {
+                    if (loadingSnackbar != null) {
+                        loadingSnackbar.dismiss();
+                    }
+                    Snackbar.make(requireView(), "Recipe saved successfully!", Snackbar.LENGTH_SHORT).show();
+                    NavController navController = Navigation.findNavController(requireActivity(),
+                            R.id.nav_host_fragment_activity_main);
+                    navController.navigateUp();
+                })
+                .addOnFailureListener(e -> {
+                    showError("Failed to save recipe: " + e.getMessage() + "\nPlease try again.");
+                });
     }
 
     @Override

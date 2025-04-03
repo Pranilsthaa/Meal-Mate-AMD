@@ -33,6 +33,13 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
+    // Define the menu order as a class constant
+    private static final int[] MENU_ORDER = {
+        R.id.navigation_home,
+        R.id.navigation_meals,
+        R.id.navigation_grocery
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,7 +77,33 @@ public class MainActivity extends AppCompatActivity {
                 R.id.navigation_grocery)
                 .build();
 
-        NavigationUI.setupWithNavController(binding.navView, navController);
+        // Setup bottom navigation with animations
+        binding.navView.setOnItemSelectedListener(item -> {
+            if (item.getItemId() == navController.getCurrentDestination().getId()) {
+                return false; // Don't navigate if we're already on this destination
+            }
+
+            // Get current and target destinations
+            int currentId = navController.getCurrentDestination().getId();
+            int targetId = item.getItemId();
+
+            // Create NavOptions with fade animations
+            androidx.navigation.NavOptions navOptions = new androidx.navigation.NavOptions.Builder()
+                    .setLaunchSingleTop(true)
+                    .setEnterAnim(R.anim.fade_in_nav)
+                    .setExitAnim(R.anim.fade_out_nav)
+                    .setPopEnterAnim(R.anim.fade_in_nav)
+                    .setPopExitAnim(R.anim.fade_out_nav)
+                    .build();
+
+            // Navigate with animations
+            try {
+                navController.navigate(targetId, null, navOptions);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        });
 
         // Set bottom navigation colors
         binding.navView.setItemIconTintList(
@@ -85,33 +118,51 @@ public class MainActivity extends AppCompatActivity {
                 binding.navView.getMenu().findItem(R.id.navigation_home).setChecked(true);
             }
         });
+    }
 
-        // Handle navigation without reloading data
-        binding.navView.setOnItemSelectedListener(item -> {
-            navController.navigate(item.getItemId());
-            return true;
-        });
+    private boolean shouldSlideLeft(int currentId, int targetId) {
+        // Find positions in the order using optimized search
+        int currentPos = -1;
+        int targetPos = -1;
+        for (int i = 0; i < MENU_ORDER.length && (currentPos == -1 || targetPos == -1); i++) {
+            if (MENU_ORDER[i] == currentId) {
+                currentPos = i;
+            }
+            if (MENU_ORDER[i] == targetId) {
+                targetPos = i;
+            }
+        }
+
+        // Check if both current and target positions are valid and if the target is to the left of the current
+        return currentPos != -1 && targetPos != -1 && targetPos < currentPos;
     }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        // Get the currently focused view
         View view = getCurrentFocus();
-        if (view != null && (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_MOVE) &&
-                view instanceof EditText && !view.getClass().getName().startsWith("android.webkit.")) {
+        if (view != null && (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_MOVE)
+                && view instanceof EditText && !view.getClass().getName().startsWith("android.webkit.")) {
+            // Get the screen coordinates of the view
             int[] scrcoords = new int[2];
             view.getLocationOnScreen(scrcoords);
             float x = ev.getRawX() + view.getLeft() - scrcoords[0];
             float y = ev.getRawY() + view.getTop() - scrcoords[1];
+            // Check if the touch event is outside the bounds of the EditText
             if (x < view.getLeft() || x > view.getRight() || y < view.getTop() || y > view.getBottom()) {
+                // Hide the keyboard if the touch is outside the EditText
                 hideKeyboard(view);
             }
         }
+        // Pass the event to the superclass for default handling
         return super.dispatchTouchEvent(ev);
     }
 
     private void hideKeyboard(View view) {
+        // Get the InputMethodManager service
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
+            // Hide the soft keyboard and clear focus from the view
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
             view.clearFocus();
         }

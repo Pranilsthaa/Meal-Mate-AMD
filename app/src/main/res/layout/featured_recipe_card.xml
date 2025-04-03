@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Main card container for featured recipe -->
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -8,10 +9,12 @@
     app:cardElevation="4dp"
     app:cardBackgroundColor="@color/card_background">
 
+    <!-- Constraint layout to position recipe elements -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <!-- Recipe thumbnail image -->
         <ImageView
             android:id="@+id/recipeImage"
             android:layout_width="120dp"
@@ -20,6 +23,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <!-- Container for recipe details -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -29,6 +33,7 @@
             app:layout_constraintStart_toEndOf="@id/recipeImage"
             app:layout_constraintTop_toTopOf="parent">
 
+            <!-- Recipe name with truncation for long text -->
             <TextView
                 android:id="@+id/recipeName"
                 android:layout_width="match_parent"
@@ -39,6 +44,7 @@
                 android:maxLines="2"
                 android:ellipsize="end" />
 
+            <!-- Brief description of the recipe -->
             <TextView
                 android:id="@+id/recipeDescription"
                 android:layout_width="match_parent"
@@ -49,6 +55,7 @@
                 android:maxLines="2"
                 android:ellipsize="end" />
 
+            <!-- Recipe category chip/badge -->
             <TextView
                 android:id="@+id/recipeCategory"
                 android:layout_width="wrap_content"
@@ -60,12 +67,14 @@
                 android:textColor="@color/white"
                 android:textSize="12sp" />
 
+            <!-- Recipe metadata section (time, servings, calories) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:orientation="horizontal">
 
+                <!-- Cook time indicator with icon -->
                 <TextView
                     android:id="@+id/recipeCookTime"
                     android:layout_width="wrap_content"
@@ -75,6 +84,7 @@
                     android:textColor="#E0E0E0"
                     android:textSize="12sp" />
 
+                <!-- Servings count with icon -->
                 <TextView
                     android:id="@+id/recipeServings"
                     android:layout_width="wrap_content"
@@ -85,6 +95,7 @@
                     android:textColor="#E0E0E0"
                     android:textSize="12sp" />
 
+                <!-- Calorie information with icon -->
                 <TextView
                     android:id="@+id/recipeCalories"
                     android:layout_width="wrap_content"
@@ -96,6 +107,7 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
+            <!-- Action button to add recipe to meal plan -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/addToPlanButton"
                 android:layout_width="wrap_content"
@@ -108,4 +120,4 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.cardview.widget.CardView> 
+</androidx.cardview.widget.CardView>

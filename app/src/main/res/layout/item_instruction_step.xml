@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Main container for an instruction step item -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -8,6 +9,7 @@
     android:layout_marginBottom="8dp"
     android:gravity="center_vertical">
 
+    <!-- Step number indicator -->
     <TextView
         android:id="@+id/stepNumberText"
         android:layout_width="wrap_content"
@@ -15,8 +17,9 @@
         android:text="1."
         android:textColor="@color/white"
         android:textSize="16sp"
-        android:layout_marginEnd="8dp"/>
+        android:layout_marginEnd="8dp" />
 
+    <!-- Input field for instruction details -->
     <EditText
         android:id="@+id/stepInput"
         android:layout_width="0dp"
@@ -27,8 +30,9 @@
         android:textColor="@color/white"
         android:background="@drawable/input_background"
         android:padding="12dp"
-        android:minHeight="48dp"/>
+        android:minHeight="48dp" />
 
+    <!-- Button to remove this instruction step -->
     <ImageButton
         android:id="@+id/removeStepButton"
         android:layout_width="24dp"
@@ -36,6 +40,6 @@
         android:layout_marginStart="8dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_remove"
-        app:tint="@color/gray"/>
+        app:tint="@color/gray" />
 
-</LinearLayout> 
+</LinearLayout>

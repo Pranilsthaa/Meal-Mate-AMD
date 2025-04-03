@@ -99,7 +99,7 @@ public class MealsFragment extends Fragment {
         mealDays = new ArrayList<>();
 
         // Initialize days of the week
-        String[] days = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+        String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         for (String day : days) {
             mealDays.add(new MealDay(day));
         }
@@ -153,13 +153,14 @@ public class MealsFragment extends Fragment {
     }
 
     private void loadMealPlan() {
-        if (auth.getCurrentUser() == null)
+        if (auth.getCurrentUser() == null || binding == null || !isAdded()) {
             return;
+        }
 
         String userId = auth.getCurrentUser().getUid();
-        
+
         // Only show full-screen loader if the RecyclerView is not visible (initial load)
-        if (mealsRecyclerView.getVisibility() != View.VISIBLE) {
+        if (mealsRecyclerView.getVisibility() != View.VISIBLE && binding != null) {
             binding.progressBar.setVisibility(View.VISIBLE);
             mealsRecyclerView.setVisibility(View.GONE);
         }
@@ -168,6 +169,11 @@ public class MealsFragment extends Fragment {
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    // Check if binding is still valid and fragment is attached
+                    if (binding == null || !isAdded()) {
+                        return;
+                    }
+
                     // Reset all days
                     for (MealDay mealDay : mealDays) {
                         mealDay.setRecipes(new ArrayList<>());
@@ -196,6 +202,11 @@ public class MealsFragment extends Fragment {
                     adapter.notifyDataSetChanged();
                 })
                 .addOnFailureListener(e -> {
+                    // Check if binding is still valid and fragment is attached
+                    if (binding == null || !isAdded()) {
+                        return;
+                    }
+
                     binding.progressBar.setVisibility(View.GONE);
                     mealsRecyclerView.setVisibility(View.VISIBLE);
                     handleError("Error loading meal plan: " + e.getMessage());
@@ -224,7 +235,7 @@ public class MealsFragment extends Fragment {
         ImageButton closeButton = dialog.findViewById(R.id.closeButton);
 
         // Setup day spinner
-        String[] days = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+        String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         ArrayAdapter<String> dayAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, days);
         dayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -260,7 +271,7 @@ public class MealsFragment extends Fragment {
     private void assignMealToDay(String day, String recipeId) {
         String userId = auth.getCurrentUser().getUid();
         MealDay mealDay = findMealDayByName(day);
-        
+
         // Show loading state only for the affected day
         adapter.setDayLoading(day, true);
 
@@ -339,7 +350,7 @@ public class MealsFragment extends Fragment {
                     if (documentSnapshot.exists()) {
                         Object ingredientsObj = documentSnapshot.get("ingredients");
                         final List<Map<String, Object>> finalIngredients = new ArrayList<>();
-                        
+
                         // Handle both List<String> and List<Map> formats
                         if (ingredientsObj instanceof List<?>) {
                             List<?> ingredientsList = (List<?>) ingredientsObj;
@@ -360,14 +371,17 @@ public class MealsFragment extends Fragment {
                                 }
                             }
                         }
-                        
+
                         if (!finalIngredients.isEmpty()) {
                             // Reference to user's grocery list document
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
                             // Get the current grocery list first
                             groceryListRef.get().addOnSuccessListener(groceryDoc -> {
-                                Map<String, Object> existingList = groceryDoc.exists() ? groceryDoc.getData() : new HashMap<>();
+                                Map<String, Object> existingList = new HashMap<>();
+                                if (groceryDoc.exists() && groceryDoc.getData() != null) {
+                                    existingList.putAll(groceryDoc.getData());
+                                }
                                 Map<String, Object> updates = new HashMap<>();
 
                                 // Process each ingredient
@@ -376,16 +390,22 @@ public class MealsFragment extends Fragment {
                                     if (name != null) {
                                         // Create a unique ID for the ingredient
                                         String ingredientId = name.toLowerCase().replaceAll("[^a-z0-9]", "_");
-                                        
+
                                         // Check if ingredient already exists
-                                        if (existingList.containsKey(ingredientId)) {
+                                        Object existingObj = existingList.get(ingredientId);
+                                        Map<String, Object> existingIngredient = (existingObj instanceof Map)
+                                                ? (Map<String, Object>) existingObj : null;
+
+                                        if (existingIngredient != null) {
                                             // Update existing ingredient
-                                            Map<String, Object> existingIngredient = (Map<String, Object>) existingList.get(ingredientId);
-                                            double existingQuantity = existingIngredient.containsKey("quantity") ? 
-                                                ((Number) existingIngredient.get("quantity")).doubleValue() : 0.0;
-                                            double newQuantity = ingredient.containsKey("quantity") ? 
-                                                ((Number) ingredient.get("quantity")).doubleValue() : 1.0;
-                                            
+                                            Object existingQuantityObj = existingIngredient.get("quantity");
+                                            double existingQuantity = (existingQuantityObj instanceof Number)
+                                                    ? ((Number) existingQuantityObj).doubleValue() : 0.0;
+
+                                            Object newQuantityObj = ingredient.get("quantity");
+                                            double newQuantity = (newQuantityObj instanceof Number)
+                                                    ? ((Number) newQuantityObj).doubleValue() : 1.0;
+
                                             // Combine quantities
                                             Map<String, Object> updatedIngredient = new HashMap<>(existingIngredient);
                                             updatedIngredient.put("quantity", existingQuantity + newQuantity);
@@ -410,14 +430,14 @@ public class MealsFragment extends Fragment {
                                 // Update the grocery list with merged ingredients
                                 if (!updates.isEmpty()) {
                                     groceryListRef.set(updates, SetOptions.merge())
-                                        .addOnSuccessListener(aVoid -> {
-                                            Log.d("MealsFragment", "Successfully added ingredients to grocery list");
-                                            Snackbar.make(requireView(), "Added ingredients to grocery list", Snackbar.LENGTH_SHORT).show();
-                                        })
-                                        .addOnFailureListener(e -> {
-                                            Log.e("MealsFragment", "Error updating grocery list", e);
-                                            Snackbar.make(requireView(), "Error updating grocery list: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-                                        });
+                                            .addOnSuccessListener(aVoid -> {
+                                                Log.d("MealsFragment", "Successfully added ingredients to grocery list");
+                                                Snackbar.make(requireView(), "Added ingredients to grocery list", Snackbar.LENGTH_SHORT).show();
+                                            })
+                                            .addOnFailureListener(e -> {
+                                                Log.e("MealsFragment", "Error updating grocery list", e);
+                                                Snackbar.make(requireView(), "Error updating grocery list: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                                            });
                                 }
                             });
                         }
@@ -432,33 +452,33 @@ public class MealsFragment extends Fragment {
     private String determineIngredientType(String ingredient) {
         // Common ingredient categories
         ingredient = ingredient.toLowerCase();
-        
-        if (ingredient.contains("meat") || ingredient.contains("chicken") || 
-            ingredient.contains("beef") || ingredient.contains("pork") || 
-            ingredient.contains("fish") || ingredient.contains("lamb")) {
+
+        if (ingredient.contains("meat") || ingredient.contains("chicken")
+                || ingredient.contains("beef") || ingredient.contains("pork")
+                || ingredient.contains("fish") || ingredient.contains("lamb")) {
             return "Meat & Fish";
-        } else if (ingredient.contains("milk") || ingredient.contains("cheese") || 
-                   ingredient.contains("yogurt") || ingredient.contains("cream") ||
-                   ingredient.contains("butter")) {
+        } else if (ingredient.contains("milk") || ingredient.contains("cheese")
+                || ingredient.contains("yogurt") || ingredient.contains("cream")
+                || ingredient.contains("butter")) {
             return "Dairy";
-        } else if (ingredient.contains("apple") || ingredient.contains("banana") || 
-                   ingredient.contains("orange") || ingredient.contains("berry") ||
-                   ingredient.contains("fruit")) {
+        } else if (ingredient.contains("apple") || ingredient.contains("banana")
+                || ingredient.contains("orange") || ingredient.contains("berry")
+                || ingredient.contains("fruit")) {
             return "Fruits";
-        } else if (ingredient.contains("carrot") || ingredient.contains("potato") || 
-                   ingredient.contains("onion") || ingredient.contains("tomato") ||
-                   ingredient.contains("vegetable")) {
+        } else if (ingredient.contains("carrot") || ingredient.contains("potato")
+                || ingredient.contains("onion") || ingredient.contains("tomato")
+                || ingredient.contains("vegetable")) {
             return "Vegetables";
-        } else if (ingredient.contains("rice") || ingredient.contains("pasta") || 
-                   ingredient.contains("flour") || ingredient.contains("bread") ||
-                   ingredient.contains("cereal")) {
+        } else if (ingredient.contains("rice") || ingredient.contains("pasta")
+                || ingredient.contains("flour") || ingredient.contains("bread")
+                || ingredient.contains("cereal")) {
             return "Grains & Pasta";
-        } else if (ingredient.contains("oil") || ingredient.contains("sauce") || 
-                   ingredient.contains("vinegar") || ingredient.contains("spice") ||
-                   ingredient.contains("herb")) {
+        } else if (ingredient.contains("oil") || ingredient.contains("sauce")
+                || ingredient.contains("vinegar") || ingredient.contains("spice")
+                || ingredient.contains("herb")) {
             return "Condiments & Spices";
         }
-        
+
         return "Other";
     }
 
@@ -472,8 +492,9 @@ public class MealsFragment extends Fragment {
     }
 
     private void removeMealFromDay(MealDay mealDay, Recipe recipe) {
-        if (mealDay == null || recipe == null || auth.getCurrentUser() == null)
+        if (mealDay == null || recipe == null || auth.getCurrentUser() == null) {
             return;
+        }
 
         String userId = auth.getCurrentUser().getUid();
         String day = mealDay.getDay();
@@ -550,7 +571,7 @@ public class MealsFragment extends Fragment {
                     if (documentSnapshot.exists()) {
                         Object ingredientsObj = documentSnapshot.get("ingredients");
                         List<String> ingredientNames = new ArrayList<>();
-                        
+
                         // Handle both List<String> and List<Map> formats
                         if (ingredientsObj instanceof List<?>) {
                             List<?> ingredientsList = (List<?>) ingredientsObj;
@@ -572,7 +593,7 @@ public class MealsFragment extends Fragment {
                                 }
                             }
                         }
-                        
+
                         if (!ingredientNames.isEmpty()) {
                             DocumentReference groceryListRef = db.collection("groceryLists").document(userId);
 
@@ -586,14 +607,14 @@ public class MealsFragment extends Fragment {
                             // Remove the ingredients from the grocery list
                             if (!updates.isEmpty()) {
                                 groceryListRef.update(updates)
-                                    .addOnSuccessListener(aVoid -> {
-                                        Log.d("MealsFragment", "Successfully removed ingredients from grocery list");
-                                        Snackbar.make(requireView(), "Removed ingredients from grocery list", Snackbar.LENGTH_SHORT).show();
-                                    })
-                                    .addOnFailureListener(e -> {
-                                        Log.e("MealsFragment", "Error removing ingredients from grocery list", e);
-                                        Snackbar.make(requireView(), "Error removing ingredients from grocery list", Snackbar.LENGTH_LONG).show();
-                                    });
+                                        .addOnSuccessListener(aVoid -> {
+                                            Log.d("MealsFragment", "Successfully removed ingredients from grocery list");
+                                            Snackbar.make(requireView(), "Removed ingredients from grocery list", Snackbar.LENGTH_SHORT).show();
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            Log.e("MealsFragment", "Error removing ingredients from grocery list", e);
+                                            Snackbar.make(requireView(), "Error removing ingredients from grocery list", Snackbar.LENGTH_LONG).show();
+                                        });
                             }
                         }
                     }
@@ -616,15 +637,20 @@ public class MealsFragment extends Fragment {
         binding = null;
     }
 }
+// Adapter for displaying a list of recipes in a RecyclerView
 
 class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
-    private final List<Recipe> recipes;
-    private final OnRecipeSelectedListener listener;
 
+    private final List<Recipe> recipes; // List of recipes to display
+    private final OnRecipeSelectedListener listener; // Listener for recipe selection events
+
+    // Interface for handling recipe selection
     public interface OnRecipeSelectedListener {
-        void onRecipeSelected(Recipe recipe);
+
+        void onRecipeSelected(Recipe recipe); // Called when a recipe is selected
     }
 
+    // Constructor to initialize the adapter with a list of recipes and a listener
     public RecipeAdapter(List<Recipe> recipes, OnRecipeSelectedListener listener) {
         this.recipes = recipes;
         this.listener = listener;
@@ -633,6 +659,7 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Inflate the layout for each recipe item
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_recipe_assign, parent, false);
         return new ViewHolder(view);
@@ -640,16 +667,20 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        // Bind the recipe data to the ViewHolder
         Recipe recipe = recipes.get(position);
         holder.bind(recipe);
     }
 
     @Override
     public int getItemCount() {
+        // Return the total number of recipes
         return recipes.size();
     }
 
+    // ViewHolder class to hold and bind views for each recipe item
     class ViewHolder extends RecyclerView.ViewHolder {
+
         private final TextView recipeName;
         private final TextView cookingTime;
         private final TextView servings;
@@ -658,12 +689,14 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            // Initialize views
             recipeName = itemView.findViewById(R.id.recipeName);
             cookingTime = itemView.findViewById(R.id.cookingTime);
             servings = itemView.findViewById(R.id.servings);
             recipeCategory = itemView.findViewById(R.id.recipeCategory);
             recipeImage = itemView.findViewById(R.id.recipeImage);
 
+            // Set click listener for the item view
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
@@ -672,6 +705,7 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
             });
         }
 
+        // Bind recipe data to the views
         public void bind(Recipe recipe) {
             recipeName.setText(recipe.getName());
             cookingTime.setText(recipe.getCookTime() + " min");
@@ -680,6 +714,7 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
 
             String imageUrl = recipe.getImageUrl();
             if (imageUrl != null && !imageUrl.isEmpty()) {
+                // Load recipe image using Glide
                 Glide.with(itemView.getContext())
                         .load(imageUrl)
                         .placeholder(R.drawable.placeholder_recipe)
@@ -693,14 +728,19 @@ class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
     }
 }
 
+// Adapter for displaying a list of recipes in a different format (Map-based)
 class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewHolder> {
-    private final List<Map<String, Object>> recipes;
-    private final OnRecipeClickListener listener;
 
+    private final List<Map<String, Object>> recipes; // List of recipes as maps
+    private final OnRecipeClickListener listener; // Listener for recipe click events
+
+    // Interface for handling recipe click events
     public interface OnRecipeClickListener {
-        void onRecipeClick(Map<String, Object> recipe);
+
+        void onRecipeClick(Map<String, Object> recipe); // Called when a recipe is clicked
     }
 
+    // Constructor to initialize the adapter with a list of recipes and a listener
     public RecipeAssignAdapter(List<Map<String, Object>> recipes, OnRecipeClickListener listener) {
         this.recipes = recipes;
         this.listener = listener;
@@ -709,6 +749,7 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Inflate the layout for each recipe item
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_recipe_assign, parent, false);
         return new ViewHolder(view);
@@ -716,16 +757,20 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        // Bind the recipe data to the ViewHolder
         Map<String, Object> recipe = recipes.get(position);
         holder.bind(recipe);
     }
 
     @Override
     public int getItemCount() {
+        // Return the total number of recipes
         return recipes.size();
     }
 
+    // ViewHolder class to hold and bind views for each recipe item
     class ViewHolder extends RecyclerView.ViewHolder {
+
         private final TextView recipeName;
         private final TextView cookingTime;
         private final TextView servings;
@@ -734,12 +779,14 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            // Initialize views
             recipeName = itemView.findViewById(R.id.recipeName);
             cookingTime = itemView.findViewById(R.id.cookingTime);
             servings = itemView.findViewById(R.id.servings);
             recipeCategory = itemView.findViewById(R.id.recipeCategory);
             recipeImage = itemView.findViewById(R.id.recipeImage);
 
+            // Set click listener for the item view
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
@@ -748,6 +795,7 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
             });
         }
 
+        // Bind recipe data (as a map) to the views
         public void bind(Map<String, Object> recipe) {
             try {
                 String name = (String) recipe.get("name");
@@ -762,6 +810,7 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
                 recipeCategory.setText(category != null ? category : "Uncategorized");
 
                 if (imageUrl != null && !imageUrl.isEmpty()) {
+                    // Load recipe image using Glide
                     Glide.with(itemView.getContext())
                             .load(imageUrl)
                             .placeholder(R.drawable.placeholder_recipe)
@@ -783,6 +832,8 @@ class RecipeAssignAdapter extends RecyclerView.Adapter<RecipeAssignAdapter.ViewH
     }
 }
 
+// Listener interface for loading recipes asynchronously
 interface OnRecipesLoadedListener {
-    void onRecipesLoaded(List<Recipe> recipes);
+
+    void onRecipesLoaded(List<Recipe> recipes); // Called when recipes are loaded
 }

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Root container for the empty meal day item -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -12,13 +13,15 @@
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
 
+    <!-- Placeholder image shown when no meal is assigned -->
     <ImageView
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:src="@drawable/placeholder_recipe"
         android:alpha="0.5"
-        android:tint="@color/gray"/>
+        android:tint="@color/gray" />
 
+    <!-- Primary text indicating no meals are assigned -->
     <TextView
         android:id="@+id/emptyText"
         android:layout_width="wrap_content"
@@ -26,14 +29,15 @@
         android:layout_marginTop="8dp"
         android:text="No meals assigned yet"
         android:textColor="@color/gray"
-        android:textSize="14sp"/>
+        android:textSize="14sp" />
 
+    <!-- Call to action text prompting the user to tap -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="Tap to assign a meal"
         android:textColor="@color/orange"
-        android:textSize="12sp"/>
+        android:textSize="12sp" />
 
 </LinearLayout> 

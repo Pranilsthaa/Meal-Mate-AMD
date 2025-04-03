@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Main container for an ingredient input item -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -15,6 +16,7 @@
         android:orientation="horizontal"
         android:layout_marginBottom="12dp">
 
+        <!-- Input field for ingredient name -->
         <EditText
             android:id="@+id/ingredientNameInput"
             android:layout_width="0dp"
@@ -25,8 +27,9 @@
             android:textColor="@color/white"
             android:background="@drawable/input_background"
             android:padding="12dp"
-            android:singleLine="true"/>
+            android:singleLine="true" />
 
+        <!-- Dropdown for ingredient type selection -->
         <Spinner
             android:id="@+id/typeSpinner"
             android:layout_width="0dp"
@@ -34,7 +37,7 @@
             android:layout_weight="2"
             android:layout_marginStart="12dp"
             android:background="@drawable/input_background"
-            android:paddingHorizontal="12dp"/>
+            android:paddingHorizontal="12dp" />
     </LinearLayout>
 
     <!-- Second Row: Quantity, Unit and Price -->
@@ -43,12 +46,14 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
+        <!-- Quantity and Unit container -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1.2"
             android:orientation="horizontal">
 
+            <!-- Input field for quantity value -->
             <EditText
                 android:id="@+id/quantityInput"
                 android:layout_width="0dp"
@@ -60,8 +65,9 @@
                 android:background="@drawable/input_background"
                 android:inputType="numberDecimal"
                 android:padding="12dp"
-                android:singleLine="true"/>
+                android:singleLine="true" />
 
+            <!-- Dropdown for unit selection (e.g., kg, g, etc) -->
             <Spinner
                 android:id="@+id/unitSpinner"
                 android:layout_width="0dp"
@@ -69,9 +75,10 @@
                 android:layout_weight="1.2"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/input_background"
-                android:paddingHorizontal="12dp"/>
+                android:paddingHorizontal="12dp" />
         </LinearLayout>
 
+        <!-- Price and remove button container -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -80,6 +87,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
+            <!-- Input field for price (in Nepalese Rupees) -->
             <EditText
                 android:id="@+id/priceInput"
                 android:layout_width="0dp"
@@ -91,8 +99,9 @@
                 android:background="@drawable/input_background"
                 android:inputType="numberDecimal"
                 android:padding="12dp"
-                android:singleLine="true"/>
+                android:singleLine="true" />
 
+            <!-- Button to remove this ingredient item -->
             <ImageButton
                 android:id="@+id/removeIngredientButton"
                 android:layout_width="48dp"
@@ -101,7 +110,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_close"
                 android:padding="12dp"
-                app:tint="@color/gray"/>
+                app:tint="@color/gray" />
         </LinearLayout>
     </LinearLayout>
-</LinearLayout> 
+</LinearLayout>

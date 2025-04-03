@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/login_gradient">
 
+    <!-- Circular CardView for the logo -->
     <androidx.cardview.widget.CardView
         android:id="@+id/logoContainer"
         android:layout_width="160dp"
@@ -18,6 +20,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
+        <!-- Logo Image inside the CardView -->
         <ImageView
             android:id="@+id/logoImage"
             android:layout_width="120dp"
@@ -28,6 +31,7 @@
 
     </androidx.cardview.widget.CardView>
 
+    <!-- CardView containing the signup form -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -38,6 +42,7 @@
         app:layout_constraintTop_toBottomOf="@id/logoContainer"
         app:layout_constraintVertical_bias="0.1">
 
+        <!-- LinearLayout for organizing form fields -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -45,6 +50,7 @@
             android:orientation="vertical"
             android:padding="24dp">
 
+            <!-- Title for the signup form -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -54,6 +60,7 @@
                 android:textSize="24sp"
                 android:textStyle="bold" />
 
+            <!-- Full Name input field -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/nameLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -73,6 +80,7 @@
                     android:textColor="@color/black" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Email input field -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/emailLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -93,6 +101,7 @@
                     android:textColor="@color/black" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Password input field with toggle visibility -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/passwordLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -115,6 +124,7 @@
                     android:textColor="@color/black" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Address input field -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/addressLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -136,6 +146,7 @@
                     android:textColor="@color/black" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Phone Number input field -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/phoneLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -157,6 +168,7 @@
                     android:textColor="@color/black" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Sign Up button -->
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/signupButton"
                 android:layout_width="match_parent"
@@ -168,6 +180,7 @@
                 android:textColor="@color/white"
                 android:textSize="16sp" />
 
+            <!-- Error message TextView -->
             <TextView
                 android:id="@+id/signupError"
                 android:layout_width="match_parent"
@@ -178,6 +191,7 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
 
+            <!-- Login prompt -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -185,12 +199,14 @@
                 android:layout_marginTop="16dp"
                 android:orientation="horizontal">
 
+                <!-- Text prompting user to login -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Already have an account? "
                     android:textColor="@color/darkGray" />
 
+                <!-- Login link -->
                 <TextView
                     android:id="@+id/loginText"
                     android:layout_width="wrap_content"
@@ -206,4 +222,4 @@
 
     </androidx.cardview.widget.CardView>
 
-</androidx.constraintlayout.widget.ConstraintLayout> 
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Main container for each grocery item in the selected items list -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -6,28 +7,31 @@
     android:padding="8dp"
     android:gravity="center_vertical">
 
+    <!-- Grocery item name that takes up flexible space in the row -->
     <TextView
         android:id="@+id/itemName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textColor="@color/white"
-        android:textSize="16sp"/>
+        android:textSize="16sp" />
 
+    <!-- Displays the quantity of the grocery item -->
     <TextView
         android:id="@+id/itemQuantity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:textColor="@color/gray"
-        android:textSize="14sp"/>
+        android:textSize="14sp" />
 
+    <!-- Displays the price of the grocery item -->
     <TextView
         android:id="@+id/itemPrice"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:textColor="@color/orange"
-        android:textSize="14sp"/>
+        android:textSize="14sp" />
 
-</LinearLayout> 
+</LinearLayout>

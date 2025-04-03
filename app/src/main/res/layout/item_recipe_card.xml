@@ -38,7 +38,7 @@
                 android:text="Edit"
                 android:textColor="@android:color/white"
                 android:textSize="16sp"
-                android:visibility="gone"/>
+                android:visibility="gone" />
 
             <!-- Delete Action (Left Swipe) -->
             <TextView
@@ -52,10 +52,11 @@
                 android:text="Delete"
                 android:textColor="@android:color/white"
                 android:textSize="16sp"
-                android:visibility="gone"/>
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Foreground Content -->
+        <!-- Main content container with dark background -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/foreground"
             android:layout_width="match_parent"
@@ -63,6 +64,7 @@
             android:background="#2E2E2E"
             android:padding="12dp">
 
+            <!-- Recipe thumbnail image with rounded corners -->
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/recipeImage"
                 android:layout_width="120dp"
@@ -71,8 +73,9 @@
                 app:shapeAppearanceOverlay="@style/RoundedImageView"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
+                app:layout_constraintBottom_toBottomOf="parent" />
 
+            <!-- Recipe title with text overflow handling -->
             <TextView
                 android:id="@+id/recipeName"
                 android:layout_width="0dp"
@@ -85,8 +88,9 @@
                 android:ellipsize="end"
                 app:layout_constraintStart_toEndOf="@id/recipeImage"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"/>
+                app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- Category badge with custom background -->
             <TextView
                 android:id="@+id/recipeCategory"
                 android:layout_width="wrap_content"
@@ -99,8 +103,9 @@
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="4dp"
                 app:layout_constraintStart_toEndOf="@id/recipeImage"
-                app:layout_constraintTop_toBottomOf="@id/recipeName"/>
+                app:layout_constraintTop_toBottomOf="@id/recipeName" />
 
+            <!-- Preparation time indicator with icon -->
             <LinearLayout
                 android:id="@+id/timeLayout"
                 android:layout_width="wrap_content"
@@ -116,7 +121,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:src="@drawable/ic_time"
-                    android:tint="@color/gray"/>
+                    android:tint="@color/gray" />
 
                 <TextView
                     android:id="@+id/recipeTime"
@@ -124,9 +129,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
                     android:textSize="14sp"
-                    android:textColor="@color/gray"/>
+                    android:textColor="@color/gray" />
             </LinearLayout>
 
+            <!-- Serving size indicator with icon -->
             <LinearLayout
                 android:id="@+id/servingsLayout"
                 android:layout_width="wrap_content"
@@ -142,7 +148,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:src="@drawable/ic_servings"
-                    android:tint="@color/gray"/>
+                    android:tint="@color/gray" />
 
                 <TextView
                     android:id="@+id/recipeServings"
@@ -150,7 +156,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
                     android:textSize="14sp"
-                    android:textColor="@color/gray"/>
+                    android:textColor="@color/gray" />
             </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>

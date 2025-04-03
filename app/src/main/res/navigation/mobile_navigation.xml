@@ -12,10 +12,18 @@
         tools:layout="@layout/fragment_home">
         <action
             android:id="@+id/action_navigation_home_to_addRecipeFragment"
-            app:destination="@id/navigation_add_recipe" />
+            app:destination="@id/navigation_add_recipe"
+            app:enterAnim="@anim/fade_in_nav"
+            app:exitAnim="@anim/fade_out_nav"
+            app:popEnterAnim="@anim/fade_in_nav"
+            app:popExitAnim="@anim/fade_out_nav" />
         <action
             android:id="@+id/action_navigation_home_to_recipeDetailsFragment"
-            app:destination="@id/navigation_recipe_details" />
+            app:destination="@id/navigation_recipe_details"
+            app:enterAnim="@anim/fade_in_nav"
+            app:exitAnim="@anim/fade_out_nav"
+            app:popEnterAnim="@anim/fade_in_nav"
+            app:popExitAnim="@anim/fade_out_nav" />
     </fragment>
 
     <fragment
@@ -25,7 +33,11 @@
         tools:layout="@layout/fragment_meals">
         <action
             android:id="@+id/action_navigation_meals_to_recipeDetailsFragment"
-            app:destination="@id/navigation_recipe_details" />
+            app:destination="@id/navigation_recipe_details"
+            app:enterAnim="@anim/fade_in_nav"
+            app:exitAnim="@anim/fade_out_nav"
+            app:popEnterAnim="@anim/fade_in_nav"
+            app:popExitAnim="@anim/fade_out_nav" />
     </fragment>
 
     <fragment
@@ -74,14 +86,26 @@
 
     <action
         android:id="@+id/action_navigation_recipes_to_recipeDetailsFragment"
-        app:destination="@id/navigation_recipe_details" />
+        app:destination="@id/navigation_recipe_details"
+        app:enterAnim="@anim/fade_in_nav"
+        app:exitAnim="@anim/fade_out_nav"
+        app:popEnterAnim="@anim/fade_in_nav"
+        app:popExitAnim="@anim/fade_out_nav" />
 
     <action
         android:id="@+id/action_navigation_recipes_to_addRecipeFragment"
-        app:destination="@id/navigation_add_recipe" />
+        app:destination="@id/navigation_add_recipe"
+        app:enterAnim="@anim/fade_in_nav"
+        app:exitAnim="@anim/fade_out_nav"
+        app:popEnterAnim="@anim/fade_in_nav"
+        app:popExitAnim="@anim/fade_out_nav" />
 
     <action
         android:id="@+id/action_navigation_recipes_to_editRecipeFragment"
-        app:destination="@id/editRecipeFragment" />
+        app:destination="@id/editRecipeFragment"
+        app:enterAnim="@anim/fade_in_nav"
+        app:exitAnim="@anim/fade_out_nav"
+        app:popEnterAnim="@anim/fade_in_nav"
+        app:popExitAnim="@anim/fade_out_nav" />
 
 </navigation>

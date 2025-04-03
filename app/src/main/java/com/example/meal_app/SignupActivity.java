@@ -20,10 +20,10 @@ import android.util.Log;
 
 public class SignupActivity extends AppCompatActivity {
 
-    private ActivitySignupBinding binding;
-    private FirebaseAuth mAuth;
-    private FirebaseFirestore db;
-    private static final String TAG = "SignupActivity";
+    private ActivitySignupBinding binding; // View binding for accessing UI elements
+    private FirebaseAuth mAuth; // Firebase Authentication instance
+    private FirebaseFirestore db; // Firestore database instance
+    private static final String TAG = "SignupActivity"; // Tag for logging
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,17 +34,23 @@ public class SignupActivity extends AppCompatActivity {
         // Set status bar color to gradient_start
         getWindow().setStatusBarColor(getResources().getColor(R.color.gradient_start));
 
+        // Initialize Firebase instances
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
 
+        // Hide the action bar
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
 
+        // Set up touch listener to hide keyboard when tapping outside input fields
         setupTouchListener();
+
+        // Set up click listeners for buttons and text views
         setupClickListeners();
     }
 
+    // Method to set up a touch listener to hide the keyboard when tapping outside input fields
     private void setupTouchListener() {
         View mainContainer = binding.getRoot();
         mainContainer.setOnTouchListener((v, event) -> {
@@ -60,15 +66,19 @@ public class SignupActivity extends AppCompatActivity {
         });
     }
 
+    // Method to set up click listeners for the signup button and login text
     private void setupClickListeners() {
-        binding.signupButton.setOnClickListener(v -> handleSignup());
+        binding.signupButton.setOnClickListener(v -> handleSignup()); // Handle signup button click
         binding.loginText.setOnClickListener(v -> {
+            // Navigate to LoginActivity when login text is clicked
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         });
     }
 
+    // Method to handle the signup process
     private void handleSignup() {
+        // Retrieve input values from the UI
         String email = binding.emailInput.getText().toString().trim();
         String password = binding.passwordInput.getText().toString().trim();
         String name = binding.nameInput.getText().toString().trim();
@@ -94,31 +104,36 @@ public class SignupActivity extends AppCompatActivity {
             return;
         }
 
+        // Disable the signup button and show a loading message
         binding.signupButton.setEnabled(false);
         binding.signupButton.setText("Creating Account...");
         binding.signupError.setVisibility(View.GONE);
 
-        // Create user with email and password
+        // Create a new user with email and password in Firebase Authentication
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
+                        // Get the user ID of the newly created user
                         String userId = mAuth.getCurrentUser().getUid();
 
-                        // Create user document in Firestore
+                        // Create a user document in Firestore
                         Map<String, Object> user = new HashMap<>();
                         user.put("name", name);
                         user.put("email", email);
                         user.put("phone", phone.isEmpty() ? "Not set" : phone);
                         user.put("address", address.isEmpty() ? "Not set" : address);
 
+                        // Save the user document in Firestore
                         db.collection("users").document(userId)
                                 .set(user)
                                 .addOnSuccessListener(aVoid -> {
                                     Log.d(TAG, "User document created");
+                                    // Navigate to LoginActivity after successful signup
                                     startActivity(new Intent(SignupActivity.this, LoginActivity.class));
                                     finish();
                                 })
                                 .addOnFailureListener(e -> {
+                                    // Handle Firestore document creation failure
                                     Log.e(TAG, "Error creating user document", e);
                                     binding.signupError.setText("Error creating account: " + e.getMessage());
                                     binding.signupError.setVisibility(View.VISIBLE);
@@ -126,6 +141,7 @@ public class SignupActivity extends AppCompatActivity {
                                     binding.signupButton.setText("Sign Up");
                                 });
                     } else {
+                        // Handle Firebase Authentication signup failure
                         Log.e(TAG, "createUserWithEmail:failure", task.getException());
                         binding.signupError.setText("Signup failed: " + task.getException().getMessage());
                         binding.signupError.setVisibility(View.VISIBLE);

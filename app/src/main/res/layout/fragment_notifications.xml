@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Main container using ConstraintLayout for flexible positioning of child elements -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ui.notifications.NotificationsFragment">
 
+    <!-- TextView to display notification messages 
+         - Centered horizontally and vertically in parent
+         - Has margins on all sides except bottom
+         - Uses medium-large text size -->
     <TextView
         android:id="@+id/text_notifications"
         android:layout_width="match_parent"

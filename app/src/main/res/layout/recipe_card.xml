@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Main card container for recipe items -->
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -7,6 +8,7 @@
     app:cardCornerRadius="8dp"
     app:cardElevation="4dp">
 
+    <!-- Container for all swipe action backgrounds and foreground content -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -19,6 +21,7 @@
             android:background="#2196F3"
             android:visibility="gone">
 
+            <!-- Edit icon shown during right swipe -->
             <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -36,6 +39,7 @@
             android:background="#F44336"
             android:visibility="gone">
 
+            <!-- Delete icon shown during left swipe -->
             <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -45,7 +49,7 @@
                 app:tint="@android:color/white" />
         </FrameLayout>
 
-        <!-- Main content (Foreground) -->
+        <!-- Main content (Foreground) - The actual recipe card content -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/foreground"
             android:layout_width="match_parent"
@@ -55,6 +59,7 @@
             android:focusable="true"
             android:padding="16dp">
 
+            <!-- Recipe thumbnail image -->
             <ImageView
                 android:id="@+id/recipeImage"
                 android:layout_width="120dp"
@@ -63,6 +68,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- Recipe title -->
             <TextView
                 android:id="@+id/recipeName"
                 android:layout_width="0dp"
@@ -75,6 +81,7 @@
                 app:layout_constraintStart_toEndOf="@+id/recipeImage"
                 app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- Calorie information display -->
             <TextView
                 android:id="@+id/recipeCalories"
                 android:layout_width="wrap_content"
@@ -83,6 +90,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- Recipe short description text -->
             <TextView
                 android:id="@+id/recipeDescription"
                 android:layout_width="0dp"
@@ -96,6 +104,7 @@
                 app:layout_constraintStart_toEndOf="@+id/recipeImage"
                 app:layout_constraintTop_toBottomOf="@+id/recipeName" />
 
+            <!-- Recipe category badge -->
             <TextView
                 android:id="@+id/recipeCategory"
                 android:layout_width="wrap_content"
@@ -109,6 +118,7 @@
                 app:layout_constraintStart_toEndOf="@+id/recipeImage"
                 app:layout_constraintTop_toBottomOf="@+id/recipeDescription" />
 
+            <!-- Cooking time information -->
             <TextView
                 android:id="@+id/recipeCookTime"
                 android:layout_width="wrap_content"
@@ -120,6 +130,7 @@
                 app:layout_constraintStart_toEndOf="@+id/recipeImage"
                 app:layout_constraintTop_toBottomOf="@+id/recipeCategory" />
 
+            <!-- Serving size information -->
             <TextView
                 android:id="@+id/recipeServings"
                 android:layout_width="wrap_content"

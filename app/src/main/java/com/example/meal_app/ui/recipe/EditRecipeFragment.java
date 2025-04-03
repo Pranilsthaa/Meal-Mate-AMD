@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 public class EditRecipeFragment extends AddRecipeFragment {
+
     private String recipeId;
 
     @Override
@@ -149,7 +150,7 @@ public class EditRecipeFragment extends AddRecipeFragment {
 
     private void addIngredientViewWithData(Map<String, Object> ingredient) {
         View ingredientView = getLayoutInflater().inflate(R.layout.item_ingredient_input, null);
-        
+
         // Set the ingredient data
         EditText nameInput = ingredientView.findViewById(R.id.ingredientNameInput);
         EditText quantityInput = ingredientView.findViewById(R.id.quantityInput);
@@ -201,10 +202,12 @@ public class EditRecipeFragment extends AddRecipeFragment {
         // Setup price change listener
         priceInput.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
 
             @Override
             public void afterTextChanged(Editable s) {
@@ -228,7 +231,7 @@ public class EditRecipeFragment extends AddRecipeFragment {
 
     private void addInstructionStepWithData(String instruction) {
         View stepView = getLayoutInflater().inflate(R.layout.item_instruction_step, null);
-        
+
         // Set the instruction data
         EditText stepInput = stepView.findViewById(R.id.stepInput);
         stepInput.setText(instruction);
@@ -297,10 +300,12 @@ public class EditRecipeFragment extends AddRecipeFragment {
 
     @Override
     protected void saveRecipe() {
-        if (!validateInputs()) return;
+        if (!validateInputs()) {
+            return;
+        }
 
         Map<String, Object> recipeData = createRecipeData();
-        
+
         // If we have a new image selected, upload it first
         if (getSelectedImageUri() != null) {
             try {
@@ -313,17 +318,17 @@ public class EditRecipeFragment extends AddRecipeFragment {
         } else {
             // No new image selected, preserve the existing image URL
             getDb().collection("recipes").document(recipeId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        String existingImageUrl = documentSnapshot.getString("imageUrl");
-                        if (existingImageUrl != null) {
-                            recipeData.put("imageUrl", existingImageUrl);
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            String existingImageUrl = documentSnapshot.getString("imageUrl");
+                            if (existingImageUrl != null) {
+                                recipeData.put("imageUrl", existingImageUrl);
+                            }
+                            updateRecipeInFirestore(recipeData);
                         }
-                        updateRecipeInFirestore(recipeData);
-                    }
-                })
-                .addOnFailureListener(e -> showError("Error retrieving existing recipe: " + e.getMessage()));
+                    })
+                    .addOnFailureListener(e -> showError("Error retrieving existing recipe: " + e.getMessage()));
         }
     }
 
@@ -342,4 +347,4 @@ public class EditRecipeFragment extends AddRecipeFragment {
                     }
                 });
     }
-} 
+}

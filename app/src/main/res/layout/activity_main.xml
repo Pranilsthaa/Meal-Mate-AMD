@@ -6,11 +6,13 @@
     android:layout_height="match_parent"
     android:background="@color/black">
 
+    <!-- FrameLayout to hold the NavHostFragment for navigation -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/nav_view">
 
+        <!-- NavHostFragment to manage navigation between fragments -->
         <fragment
             android:id="@+id/nav_host_fragment_activity_main"
             android:name="androidx.navigation.fragment.NavHostFragment"
@@ -21,6 +23,7 @@
 
     </FrameLayout>
 
+    <!-- BottomNavigationView for navigation menu at the bottom -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/nav_view"
         android:layout_width="match_parent"
